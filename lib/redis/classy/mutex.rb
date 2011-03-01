@@ -1,8 +1,10 @@
 require 'redis-classy'
 
 class Redis::Classy::Mutex < Redis::Classy
-  
-  def initialize(object, timeout=10)
+
+  TIMEOUT = 10
+
+  def initialize(object, timeout=TIMEOUT)
     @now = Time.now.to_i
     @expires_at = @now + timeout
     super("#{object.class.name}:#{object.id}")
@@ -22,7 +24,7 @@ class Redis::Classy::Mutex < Redis::Classy
     true
   end
 
-  def self.sweep
+  def self.sweep(timeout=TIMEOUT)
     now = Time.now.to_i
     keys = self.keys
     values = self.mget(*keys)
@@ -34,7 +36,7 @@ class Redis::Classy::Mutex < Redis::Classy
     end
 
     stale_keys.each do |key|
-      self.del(key) if self.getset(key, now + 10).to_i <= now # Make extra sure someone haven't released the lock yet.
+      self.del(key) if self.getset(key, now + timeout).to_i <= now # Make extra sure someone haven't released the lock yet.
     end
 
     stale_keys.size

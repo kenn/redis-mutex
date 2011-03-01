@@ -1,1 +1,3 @@
-require File.dirname(__FILE__) + '/redis/classy/mutex'
+class Redis::Classy
+  autoload :Mutex, 'redis/classy/mutex'
+end
