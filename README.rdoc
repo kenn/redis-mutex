@@ -52,3 +52,5 @@ If you take a closer look, you find that the actual key is structured in the fol
 
  Redis::Classy.keys
  => ["Redis::Classy::Mutex:Room:123"]
+
+For more internal details, refer to https://github.com/kenn/redis-classy
