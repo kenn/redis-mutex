@@ -2,9 +2,53 @@
 
 Distrubuted non-blocking mutex in Ruby using Redis.
 
+The idea was taken from - http://redis.io/commands/setnx and http://gist.github.com/457269
+
+Requires the redis-classy gem.
+
 == Install
 
  gem install redis-mutex
 
 == Usage
 
+In Gemfile:
+
+ gem "redis-mutex"
+
+In config/initializers/redis_mutex.rb:
+
+ Redis::Classy.db = Redis.new(:host => 'localhost')
+
+There are four methods - new, lock, unlock and sweep:
+
+ mutex = Redis::Classy::Mutex.new(some_object)
+ mutex.lock
+ mutex.unlock
+ Redis::Classy::Mutex.sweep
+
+It takes any Ruby objects that respond to :id, where the key is automatically set as "TheClass:id", or pass any string as a key.
+
+Here's a sample usage in a Rails app:
+
+ class RoomController < ApplicationController
+   def enter
+     @room = Room.find_by_id(params[:id])
+     
+     mutex = Redis::Classy::Mutex.new(@room)   # key => "Room:123"
+     
+     if mutex.lock    # return true when you successfully obtain the lock for the room 123
+       ...
+       do_something
+       ...
+       mutex.unlock   # exit the critical section ASAP
+     end
+   end
+ end
+
+The caveat is that the lock just returns false when it fails and do not block.
+
+If you take a closer look, you find that the actual key is structured in the following form:
+
+ Redis::Classy.keys
+ => ["Redis::Classy::Mutex:Room:123"]
