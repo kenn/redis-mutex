@@ -27,9 +27,12 @@ RSpec::Core::RakeTask.new(:spec) do |spec|
   spec.pattern = FileList['spec/**/*_spec.rb']
 end
 
-RSpec::Core::RakeTask.new(:rcov) do |spec|
-  spec.pattern = 'spec/**/*_spec.rb'
-  spec.rcov = true
+desc "Flush the test database"
+task :flushdb do
+  require 'redis-classy'
+  Redis::Classy.db = Redis.new
+  Redis::Classy.select 1
+  Redis::Classy.flushdb
 end
 
 task :default => :spec
