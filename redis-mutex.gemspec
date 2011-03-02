@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{redis-mutex}
-  s.version = "0.9.0"
+  s.version = "1.0.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Kenn Ejima"]
-  s.date = %q{2011-02-28}
+  s.date = %q{2011-03-01}
   s.description = %q{Distrubuted non-blocking mutex in Ruby using Redis}
   s.email = %q{kenn.ejima@gmail.com}
   s.extra_rdoc_files = [
@@ -26,8 +26,9 @@ Gem::Specification.new do |s|
     "Rakefile",
     "VERSION",
     "lib/redis-mutex.rb",
-    "lib/redis/classy/mutex.rb",
-    "spec/redis-mutex_spec.rb",
+    "lib/redis/mutex.rb",
+    "redis-mutex.gemspec",
+    "spec/redis_mutex_spec.rb",
     "spec/spec_helper.rb"
   ]
   s.homepage = %q{http://github.com/kenn/redis-mutex}
@@ -36,7 +37,7 @@ Gem::Specification.new do |s|
   s.rubygems_version = %q{1.5.3}
   s.summary = %q{Distrubuted non-blocking mutex in Ruby using Redis}
   s.test_files = [
-    "spec/redis-mutex_spec.rb",
+    "spec/redis_mutex_spec.rb",
     "spec/spec_helper.rb"
   ]
 
