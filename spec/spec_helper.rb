@@ -7,12 +7,11 @@ require 'redis-mutex'
 # in ./support/ and its subdirectories.
 Dir["#{File.dirname(__FILE__)}/support/**/*.rb"].each {|f| require f}
 
-Redis::Classy.db = Redis.new
-Redis::Classy.select 1
-unless Redis::Classy.keys.empty?
-  puts '[ERROR]: Redis database 1 not empty! run "rake flushdb" beforehand.'
-  exit!
-end
-
 RSpec.configure do |config|
+  # Use database 15 for testing so we don't accidentally step on you real data.
+  Redis::Classy.db = Redis.new(:db => 15)
+  unless Redis::Classy.keys.empty?
+    puts '[ERROR]: Redis database 15 not empty! run "rake flushdb" beforehand.'
+    exit!
+  end
 end
