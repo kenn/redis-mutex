@@ -15,8 +15,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "redis-mutex"
   gem.homepage = "http://github.com/kenn/redis-mutex"
   gem.license = "MIT"
-  gem.summary = "Distrubuted non-blocking mutex in Ruby using Redis"
-  gem.description = "Distrubuted non-blocking mutex in Ruby using Redis"
+  gem.summary = "Distrubuted non-blocking and blocking mutex using Redis"
+  gem.description = "Distrubuted non-blocking and blocking mutex using Redis"
   gem.email = "kenn.ejima@gmail.com"
   gem.authors = ["Kenn Ejima"]
 end
