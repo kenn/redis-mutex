@@ -27,9 +27,11 @@ class Redis
             key = self.class.name << '#' << target.to_s
             options = self.class.auto_mutex_methods[target]
 
-            Redis::Mutex.lock(key, options) do
+            success = Redis::Mutex.lock(key, options) do
               send(without_method, *args)
             end
+
+            options[:after_failure].call if !success and options[:after_failure]
           end
 
           alias_method without_method, target

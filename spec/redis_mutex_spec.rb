@@ -78,24 +78,25 @@ describe Redis::Mutex do
 
       class C
         include Redis::Mutex::Macro
-        auto_mutex :run_singularly, :block => 0 # Give up immediately if lock is taken
-        @@result = 0
+        auto_mutex :run_singularly, :block => 0, :after_failure => lambda { @@failure += 1 }
+        @@success = 0
+        @@failure = 0
 
         def run_singularly
           sleep 0.1
-          Thread.exclusive { @@result += 1 }
+          Thread.exclusive { @@success += 1 }
         end
 
-        def self.result
-          @@result
-        end
+        def self.success; @@success; end
+        def self.failure; @@failure; end
       end
 
       t1 = Thread.new { C.new.run_singularly }
       t2 = Thread.new { C.new.run_singularly }
       t1.join
       t2.join
-      C.result.should == 1
+      C.success.should == 1
+      C.failure.should == 1
     end
   end
 end
