@@ -3,6 +3,7 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 describe Redis::Mutex do
   before do
     Redis::Classy.flushdb
+    @short_mutex_options = { :block => 0.1, :sleep => 0.02 }
   end
 
   after do
@@ -32,10 +33,10 @@ describe Redis::Mutex do
   end
 
   it "should not get a lock when existing lock is still effective" do
-    mutex = Redis::Mutex.new(:test_lock, :block => 0.2)
+    mutex = Redis::Mutex.new(:test_lock, @short_mutex_options)
 
     # someone beats us to it
-    mutex2 = Redis::Mutex.new(:test_lock, :block => 0.2)
+    mutex2 = Redis::Mutex.new(:test_lock, @short_mutex_options)
     mutex2.lock
 
     mutex.lock.should be_false    # should not have the lock
@@ -53,5 +54,48 @@ describe Redis::Mutex do
 
     mutex.unlock
     mutex.get.should_not be_nil   # lock should still be there
+  end
+
+  it "should ensure unlock when something goes wrong in the block" do
+    mutex = Redis::Mutex.new(:test_lock)
+    begin
+      mutex.lock do
+        raise "Something went wrong!"
+      end
+    rescue
+      mutex.locking.should be_false
+    end
+  end
+
+  it "should reset locking state on reuse" do
+    mutex = Redis::Mutex.new(:test_lock, @short_mutex_options)
+    mutex.lock.should be_true
+    mutex.lock.should be_false
+  end
+
+  describe Redis::Mutex::Macro do
+    it "should add auto_mutex" do
+
+      class C
+        include Redis::Mutex::Macro
+        auto_mutex :run_singularly, :block => 0 # Give up immediately if lock is taken
+        @@result = 0
+
+        def run_singularly
+          sleep 0.1
+          Thread.exclusive { @@result += 1 }
+        end
+
+        def self.result
+          @@result
+        end
+      end
+
+      t1 = Thread.new { C.new.run_singularly }
+      t2 = Thread.new { C.new.run_singularly }
+      t1.join
+      t2.join
+      C.result.should == 1
+    end
   end
 end

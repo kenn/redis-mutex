@@ -15,8 +15,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "redis-mutex"
   gem.homepage = "http://github.com/kenn/redis-mutex"
   gem.license = "MIT"
-  gem.summary = "Distrubuted non-blocking and blocking mutex using Redis"
-  gem.description = "Distrubuted non-blocking and blocking mutex using Redis"
+  gem.summary = "Distrubuted mutex using Redis"
+  gem.description = "Distrubuted mutex using Redis"
   gem.email = "kenn.ejima@gmail.com"
   gem.authors = ["Kenn Ejima"]
 end
@@ -31,5 +31,5 @@ end
 
 task :default => :spec
 task :spec do
-  exec "rspec spec/redis_mutex_spec.rb"
+  exec "rspec spec"
 end
