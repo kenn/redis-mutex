@@ -14,7 +14,11 @@ In the following example, only one thread / process / server can enter the locke
 Redis::Mutex.lock(:your_lock_name)
   # do something exclusively
 end
+```
 
+or
+
+```ruby
 mutex = Redis::Mutex.new(:your_lock_name)
 if mutex.lock
   # do something exclusively
