@@ -30,10 +30,10 @@ end
 
 By default, while one is holding a lock, others wait **1 second** in total, polling **every 100ms** to see if the lock was released.
 When 1 second has passed, the lock method returns `false` and others give up. Note that if your job runs longer than **10 seconds**,
-the lock will be automatically removed to avoid a deadlock situation in case your job is dead without releasing the lock. Also note
+the lock will be automatically removed to avoid a deadlock situation in case your job is dead before releasing the lock. Also note
 that you can configure any of these timing values, as explained later.
 
-Or if you want to immediately receive `false` on an unsuccessful locking attempt, you can change the mutex mode to **non-blocking** mode.
+Or if you want to immediately receive `false` on an unsuccessful locking attempt, you can change the mutex mode to **non-blocking**.
 
 Install
 -------
@@ -68,10 +68,10 @@ Redis::Mutex.sweep                        # Forcibly remove all locks
 Redis::Mutex.lock(key, options)           # Shortcut to new + lock
 ```
 
-The key argument can be any Ruby objects that respond to `id` method, where the key is automatically set as `TheClass:id`,
-or pass any string or symbol. The `Redis::Mutex:` prefix will be automatically prepended to the given key name. For instance,
-if you pass a `Room` object with id of `123`, the actual key in Redis will be `Redis::Mutex:Room:123`. The automatic prefixing
-and instance binding is the feature of `Redis::Classy` - for more internal details, refer to [Redis Classy](https://github.com/kenn/redis-classy).
+The key argument can be symbol, string, or any Ruby objects that respond to `id` method, where the key is automatically set as
+`TheClass:id`. For any given key, `Redis::Mutex:` prefix will be automatically prepended. For instance, if you pass a `Room`
+object with id of `123`, the actual key in Redis will be `Redis::Mutex:Room:123`. The automatic prefixing and instance binding
+is the feature of `Redis::Classy` - for more internal details, refer to [Redis Classy](https://github.com/kenn/redis-classy).
 
 The initialize method takes several options.
 
@@ -84,9 +84,8 @@ The initialize method takes several options.
                 # with the one who held the lock. (default: 10)
 ```
 
-The lock method returns `true` when the lock has been successfully obtained, or returns `false` when the attempts
-failed after the seconds specified with **:block**. It is set to **non-blocking** mode and immediately returns `false`
-when 0 is given to **:block**.
+The lock method returns `true` when the lock has been successfully obtained, or returns `false` when the attempts failed after
+the seconds specified with **:block**. When 0 is given to **:block**, it is set to **non-blocking** mode and immediately returns `false`.
 
 In the following Rails example, only one request can enter to a given room.
 
@@ -103,7 +102,7 @@ class RoomController < ApplicationController
 end
 ```
 
-Note that you need to explicitly call the unlock method unless you don't use the block syntax, and it is recommended to
+Note that you need to explicitly call the unlock method when you don't use the block syntax, and it is recommended to
 put the `unlock` method in the `ensure` clause unless you're sure your code won't raise any exception.
 
 ```ruby
@@ -125,13 +124,15 @@ end
 Macro-style definition
 ----------------------
 
-If you want to put an entire method into a critical section, you can use the macro-style definition. The locking scope
+If you want to wrap an entire method into a critical section, you can use the macro-style definition. The locking scope
 will be `TheClass#method` and only one method can run at any given time.
+
+If you give a proc object to the `after_failure` option, it will get called after locking attempt failed.
 
 ```ruby
 class JobController < ApplicationController
   include Redis::Mutex::Macro
-  auto_mutex :run, :block => 0, :after_failure => lambda { render :text => "failed!" }
+  auto_mutex :run, :block => 0, :after_failure => lambda { render :text => "failed to obtain lock!" }
   
   def run
     # do something exclusively
