@@ -17,21 +17,31 @@ class Redis
         end
 
         def method_added(target)
-          return if target.to_s =~ /^auto_mutex_methods.*$/
+          return if target.to_s =~ /^auto_mutex_methods/
           return unless self.auto_mutex_methods[target]
           without_method  = "#{target}_without_auto_mutex"
           with_method     = "#{target}_with_auto_mutex"
+          after_method    = "#{target}_after_failure"
           return if method_defined?(without_method)
+          options = self.auto_mutex_methods[target]
+
+          if options[:after_failure].is_a?(Proc)
+            define_method(after_method, &options[:after_failure])
+          end
 
           define_method(with_method) do |*args|
             key = self.class.name << '#' << target.to_s
-            options = self.class.auto_mutex_methods[target]
+            response = nil
 
             success = Redis::Mutex.lock(key, options) do
-              send(without_method, *args)
+              response = send(without_method, *args)
             end
 
-            options[:after_failure].call if !success and options[:after_failure]
+            if !success and respond_to?(after_method)
+              response = send(after_method, *args)
+            end
+
+            response
           end
 
           alias_method without_method, target
