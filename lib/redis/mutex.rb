@@ -11,7 +11,7 @@ class Redis
   #
   class Mutex < Redis::Classy
     autoload :Macro, 'redis/mutex/macro'
-    attr_reader :block, :sleep, :expire, :locking
+    attr_reader :locking
     DEFAULT_EXPIRE = 10
 
     def initialize(object, options={})
@@ -53,26 +53,26 @@ class Redis
 
     def try_lock
       now = Time.now.to_f
-      @expires_at = now + @expire                         # Extend in each blocking loop
-      return true   if setnx(@expires_at)                 # Success, the lock has been acquired
-      return false  if get.to_f > now                     # Check if the lock is still effective
+      @expires_at = now + @expire                             # Extend in each blocking loop
+      return true   if self.setnx(@expires_at)                # Success, the lock has been acquired
+      return false  if self.get.to_f > now                    # Check if the lock is still effective
 
       # The lock has expired but wasn't released... BAD!
-      return true   if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
+      return true   if self.getset(@expires_at).to_f <= now   # Success, we acquired the previously expired lock
       return false  # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
     def unlock(force=false)
       @locking = false
-      del if get.to_f == @expires_at or force   # Release the lock if it seems to be yours
+      self.del if self.get.to_f == @expires_at or force       # Release the lock if it seems to be yours
     end
 
     class << self
       def sweep
-        return 0 if (all_keys = keys).empty?
+        return 0 if (all_keys = self.keys).empty?
 
         now = Time.now.to_f
-        values = mget(*all_keys)
+        values = self.mget(*all_keys)
 
         expired_keys = [].tap do |array|
           all_keys.each_with_index do |key, i|
@@ -81,7 +81,7 @@ class Redis
         end
 
         expired_keys.each do |key|
-          del(key) if getset(key, now + DEFAULT_EXPIRE).to_f <= now # Make extra sure that anyone haven't extended the lock
+          self.del(key) if self.getset(key, now + DEFAULT_EXPIRE).to_f <= now # Make extra sure that anyone haven't extended the lock
         end
 
         expired_keys.size
