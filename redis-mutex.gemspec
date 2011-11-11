@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "redis-mutex"
-  s.version = "1.2.2"
+  s.version = "1.2.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Kenn Ejima"]
-  s.date = "2011-11-05"
+  s.date = "2011-11-11"
   s.description = "Distrubuted mutex using Redis"
   s.email = "kenn.ejima@gmail.com"
   s.extra_rdoc_files = [
