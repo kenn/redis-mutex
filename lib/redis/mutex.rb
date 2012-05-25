@@ -11,6 +11,8 @@ class Redis
   #
   class Mutex < Redis::Classy
     autoload :Macro, 'redis/mutex/macro'
+    autoload :VERSION, 'redis/mutex/version'
+
     attr_reader :locking
     DEFAULT_EXPIRE = 10
 
@@ -68,6 +70,9 @@ class Redis
     end
 
     class << self
+      def to_ary
+        
+      end
       def sweep
         return 0 if (all_keys = self.keys).empty?
 
