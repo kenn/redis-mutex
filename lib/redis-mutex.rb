@@ -1,2 +1,5 @@
 require 'redis-classy'
-require 'redis/mutex'
+
+class Redis
+  autoload :Mutex, 'redis/mutex'
+end
