@@ -11,7 +11,6 @@ class Redis
   #
   class Mutex < Redis::Classy
     autoload :Macro, 'redis/mutex/macro'
-    autoload :VERSION, 'redis/mutex/version'
 
     attr_reader :locking
     DEFAULT_EXPIRE = 10

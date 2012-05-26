@@ -1,6 +1,4 @@
 # -*- encoding: utf-8 -*-
-# WARNING: do not directly load redis/mutex/version so avoid superclass mismatch. load from the top instead.
-require File.expand_path('../lib/redis-mutex', __FILE__)
 
 Gem::Specification.new do |gem|
   gem.authors       = ["Kenn Ejima"]
@@ -14,7 +12,7 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.name          = "redis-mutex"
   gem.require_paths = ["lib"]
-  gem.version       = Redis::Mutex::VERSION
+  gem.version       = '1.3.1' # retrieve this value by: Gem.loaded_specs['redis-mutex'].version.to_s
 
   gem.add_runtime_dependency "redis-classy", "~> 1.0"
   gem.add_runtime_dependency "redis"
