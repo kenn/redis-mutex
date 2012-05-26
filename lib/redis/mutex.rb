@@ -65,7 +65,7 @@ class Redis
 
     def unlock(force=false)
       @locking = false
-      self.del if self.get.to_f == @expires_at or force       # Release the lock if it seems to be yours
+      self.del if self.get == @expires_at.to_s or force       # Release the lock if it seems to be yours
     end
 
     class << self
