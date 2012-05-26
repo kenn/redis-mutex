@@ -69,9 +69,6 @@ class Redis
     end
 
     class << self
-      def to_ary
-        
-      end
       def sweep
         return 0 if (all_keys = self.keys).empty?
 
