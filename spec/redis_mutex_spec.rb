@@ -45,7 +45,7 @@ describe Redis::Mutex do
 
   it "should not remove the key if lock is held past expiration" do
     mutex = Redis::Mutex.new(:test_lock, :expire => 0.1, :block => 0)
-    mutex.lock
+    mutex.lock.should be_true
     sleep 0.2   # lock expired
 
     # someone overwrites the expired lock

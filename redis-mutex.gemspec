@@ -17,7 +17,7 @@ Gem::Specification.new do |gem|
   gem.version       = Redis::Mutex::VERSION
 
   gem.add_runtime_dependency "redis-classy", "~> 1.0"
-  gem.add_runtime_dependency "redis", "~> 2.0"
+  gem.add_runtime_dependency "redis"
   gem.add_development_dependency "rspec"
   gem.add_development_dependency "bundler"
 
