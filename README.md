@@ -13,7 +13,7 @@ Synopsis
 In the following example, only one thread / process / server can enter the locked block at one time.
 
 ```ruby
-Redis::Mutex.lock(:your_lock_name)
+Redis::Mutex.lock(:your_lock_name) do
   # do something exclusively
 end
 ```
