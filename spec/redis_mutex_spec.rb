@@ -93,4 +93,20 @@ describe Redis::Mutex do
       t2.join
     end
   end
+
+  describe '::lock!' do
+    it 'should not raise error if lock obtained' do
+      expect { Redis::Mutex.lock!(:test_lock) }.to_not raise_error
+    end
+
+    it 'should return value of block if lock obtained' do
+      Redis::Mutex.lock!(:test_lock) { :test_result }.should == :test_result
+    end
+
+    it 'should raise error if lock not obtained' do
+      Redis::Mutex.lock(:test_lock)
+      expect { Redis::Mutex.lock!(:test_lock) }.
+        to raise_error(Redis::Mutex::LockNotAcquired)
+    end
+  end
 end

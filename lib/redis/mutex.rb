@@ -14,6 +14,7 @@ class Redis
 
     attr_reader :locking
     DEFAULT_EXPIRE = 10
+    LockNotAcquired = Class.new(StandardError)
 
     def initialize(object, options={})
       super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
@@ -50,6 +51,13 @@ class Redis
       end
 
       success
+    end
+
+    def lock!
+      result = nil
+      acquired = lock { result = yield if block_given? }
+      raise LockNotAcquired, "Failed to acquire lock #{key}" unless acquired
+      result
     end
 
     def try_lock
@@ -90,6 +98,10 @@ class Redis
 
       def lock(object, options={}, &block)
         new(object, options).lock(&block)
+      end
+
+      def lock!(object, options = {}, &block)
+        new(object, options).lock!(&block)
       end
     end
   end
