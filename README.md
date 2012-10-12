@@ -13,7 +13,7 @@ Synopsis
 In the following example, only one thread / process / server can enter the locked block at one time.
 
 ```ruby
-Redis::Mutex.lock(:your_lock_name) do
+Redis::Mutex.with_lock(:your_lock_name) do
   # do something exclusively
 end
 ```
@@ -26,7 +26,7 @@ if mutex.lock
   # do something exclusively
   mutex.unlock
 else
-  puts "failed to obtain lock!"
+  puts "failed to acquire lock!"
 end
 ```
 
@@ -36,6 +36,15 @@ the lock will be automatically removed to avoid a deadlock situation in case you
 that you can configure any of these timing values, as explained later.
 
 Or if you want to immediately receive `false` on an unsuccessful locking attempt, you can change the mutex mode to **non-blocking**.
+
+Changes in v2.0
+---------------
+
+**Warning**: We have introduced several backward-incompatible changes to v2.0.
+
+* Exception-based control flow: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `Redis::Mutex::LockError` and `Redis::Mutex::UnlockError` respectively.
+* `#lock` no longer accepts a block. Use `#with_lock` instead, which uses `lock!` internally and returns the value of block.
+* `unlock` returns boolean values for success / failure, for consistency with `lock`.
 
 Install
 -------
@@ -48,7 +57,7 @@ Usage
 In Gemfile:
 
 ```ruby
-gem "redis-mutex"
+gem 'redis-mutex'
 ```
 
 Register the Redis server: (e.g. in `config/initializers/redis_mutex.rb` for Rails)
@@ -59,15 +68,19 @@ Redis::Classy.db = Redis.new(:host => 'localhost')
 
 Note that Redis Mutex uses the `redis-classy` gem internally to organize keys in an isolated namespace.
 
-There are four methods - `new`, `lock`, `unlock` and `sweep`:
+There are a number of methods:
 
 ```ruby
 mutex = Redis::Mutex.new(key, options)    # Configure a mutex lock
-mutex.lock                                # Try to obtain the lock
-mutex.unlock                              # Release the lock if it's not expired
-Redis::Mutex.sweep                        # Forcibly remove all locks
+mutex.lock                                # Try to acquire the lock
+mutex.unlock                              # Try to release the lock
+mutex.lock!                               # Try to acquire the lock, raises exception when failed
+mutex.unlock!                             # Try to release the lock, raises exception when failed
+mutex.with_lock                           # Try to acquire the lock, execute the block, then return the value of the block.
+                                          # Raises exception when failed to acquire the lock.
 
-Redis::Mutex.lock(key, options)           # Shortcut to new + lock
+Redis::Mutex.sweep                        # Remove all expired locks
+Redis::Mutex.with_lock(key, options)      # Shortcut to new + with_lock
 ```
 
 The key argument can be symbol, string, or any Ruby objects that respond to `id` method, where the key is automatically set as
@@ -81,12 +94,12 @@ The initialize method takes several options.
 :block  => 1    # Specify in seconds how long you want to wait for the lock to be released.
                 # Speficy 0 if you need non-blocking sematics and return false immediately. (default: 1)
 :sleep  => 0.1  # Specify in seconds how long the polling interval should be when :block is given.
-                # It is recommended that you do NOT go below 0.01. (default: 0.1)
-:expire => 10   # Specify in seconds when the lock should forcibly be removed when something went wrong
-                # with the one who held the lock. (default: 10)
+                # It is NOT recommended to go below 0.01. (default: 0.1)
+:expire => 10   # Specify in seconds when the lock should be considered stale when something went wrong
+                # with the one who held the lock and failed to unlock. (default: 10)
 ```
 
-The lock method returns `true` when the lock has been successfully obtained, or returns `false` when the attempts failed after
+The lock method returns `true` when the lock has been successfully acquired, or returns `false` when the attempts failed after
 the seconds specified with **:block**. When 0 is given to **:block**, it is set to **non-blocking** mode and immediately returns `false`.
 
 In the following Rails example, only one request can enter to a given room.
@@ -96,29 +109,31 @@ class RoomController < ApplicationController
   before_filter { @room = Room.find(params[:id]) }
   
   def enter
-    success = Redis::Mutex.lock(@room) do    # key => "Room:123"
+    Redis::Mutex.with_lock(@room) do    # key => "Room:123"
       # do something exclusively
     end
-    render :text => success ? 'success!' : 'failed to obtain lock!'
+    render text: 'success!'
+  rescue Redis::Mutex::LockError
+    render text: 'failed to acquire lock!'
   end
 end
 ```
 
-Note that you need to explicitly call the unlock method when you don't use the block syntax, and it is recommended to
-put the `unlock` method in the `ensure` clause unless you're sure your code won't raise any exception.
+Note that you need to explicitly call the `unlock` method when you don't use `with_lock` and its block syntax. Also it is recommended to
+put the `unlock` method in the `ensure` clause.
 
 ```ruby
 def enter
-  mutex = Redis::Mutex.new('non-blocking', :block => 0, :expire => 10.minutes)
+  mutex = Redis::Mutex.new('non-blocking', block: 0, expire: 10.minutes)
   if mutex.lock
     begin
       # do something exclusively
     ensure
       mutex.unlock
     end
-    render :text => 'success!'
+    render text: 'success!'
   else
-    render :text => 'failed to obtain lock!'
+    render text: 'failed to acquire lock!'
   end
 end
 ```
@@ -134,11 +149,11 @@ If you give a proc object to the `after_failure` option, it will get called afte
 ```ruby
 class JobController < ApplicationController
   include Redis::Mutex::Macro
-  auto_mutex :run, :block => 0, :after_failure => lambda { render :text => "failed to obtain lock!" }
-  
+  auto_mutex :run, block: 0, after_failure: lambda { render text: 'failed to acquire lock!' }
+
   def run
     # do something exclusively
-    render :text => "success!"
+    render text: 'success!'
   end
 end
 ```
