@@ -40,10 +40,8 @@ Or if you want to immediately receive `false` on an unsuccessful locking attempt
 Changes in v2.0
 ---------------
 
-**Warning**: We have introduced several backward-incompatible changes to v2.0.
-
-* Exception-based control flow: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `Redis::Mutex::LockError` and `Redis::Mutex::UnlockError` respectively.
-* `#lock` no longer accepts a block. Use `#with_lock` instead, which uses `lock!` internally and returns the value of block.
+* **Exception-based control flow**: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `Redis::Mutex::LockError` and `Redis::Mutex::UnlockError` respectively.
+* **INCOMPATIBLE CHANGE**: `#lock` no longer accepts a block. Use `#with_lock` instead, which uses `lock!` internally and returns the value of block.
 * `unlock` returns boolean values for success / failure, for consistency with `lock`.
 
 Install
