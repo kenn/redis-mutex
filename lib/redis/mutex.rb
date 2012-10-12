@@ -12,8 +12,10 @@ class Redis
   class Mutex < Redis::Classy
     autoload :Macro, 'redis/mutex/macro'
 
-    attr_reader :locking
     DEFAULT_EXPIRE = 10
+    LockError = Class.new(StandardError)
+    UnlockError = Class.new(StandardError)
+    AssertionError = Class.new(StandardError)
 
     def initialize(object, options={})
       super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
@@ -23,6 +25,7 @@ class Redis
     end
 
     def lock
+      self.class.raise_assertion_error if block_given?
       @locking = false
 
       if @block > 0
@@ -30,66 +33,92 @@ class Redis
         start_at = Time.now
         while Time.now - start_at < @block
           @locking = true and break if try_lock
-          Kernel.sleep @sleep
+          sleep @sleep
         end
       else
         # Non-blocking mode
         @locking = try_lock
       end
-      success = @locking # Backup
-
-      if block_given? and @locking
-        begin
-          yield
-        ensure
-          # Since it's possible that the yielded operation took a long time, we can't just simply
-          # Release the lock. The unlock method checks if the expires_at remains the same that you
-          # set, and do not release it when the lock timestamp was overwritten.
-          unlock
-        end
-      end
-
-      success
+      @locking
     end
 
     def try_lock
       now = Time.now.to_f
-      @expires_at = now + @expire                             # Extend in each blocking loop
-      return true   if self.setnx(@expires_at)                # Success, the lock has been acquired
-      return false  if self.get.to_f > now                    # Check if the lock is still effective
+      @expires_at = now + @expire                       # Extend in each blocking loop
+      return true   if setnx(@expires_at)               # Success, the lock has been acquired
+      return false  if get.to_f > now                   # Check if the lock is still effective
 
       # The lock has expired but wasn't released... BAD!
-      return true   if self.getset(@expires_at).to_f <= now   # Success, we acquired the previously expired lock
+      return true   if getset(@expires_at).to_f <= now   # Success, we acquired the previously expired lock
       return false  # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
-    def unlock(force=false)
-      @locking = false
-      self.del if self.get == @expires_at.to_s or force       # Release the lock if it seems to be yours
+    def unlock(force = false)
+      # Since it's possible that the operations in the critical section took a long time,
+      # we can't just simply release the lock. The unlock method checks if @expires_at
+      # remains the same, and do not release when the lock timestamp was overwritten.
+
+      if get == @expires_at.to_s or force
+        # Redis#del with a single key returns '1' or nil
+        !!del
+      else
+        false
+      end
+    end
+
+    def with_lock
+      if lock!
+        begin
+          @result = yield
+        ensure
+          unlock
+        end
+      end
+      @result
+    end
+
+    def lock!
+      lock or raise LockError, "failed to acquire lock #{key.inspect}"
+    end
+
+    def unlock!(force = false)
+      unlock(force) or raise UnlockError, "failed to release lock #{key.inspect}"
     end
 
     class << self
       def sweep
-        return 0 if (all_keys = self.keys).empty?
+        return 0 if (all_keys = keys).empty?
 
         now = Time.now.to_f
-        values = self.mget(*all_keys)
+        values = mget(*all_keys)
 
-        expired_keys = [].tap do |array|
-          all_keys.each_with_index do |key, i|
-            array << key if !values[i].nil? and values[i].to_f <= now
-          end
+        expired_keys = all_keys.zip(values).select do |key, time|
+          time && time.to_f <= now
         end
 
-        expired_keys.each do |key|
-          self.del(key) if self.getset(key, now + DEFAULT_EXPIRE).to_f <= now # Make extra sure that anyone haven't extended the lock
+        expired_keys.each do |key, _|
+          # Make extra sure that anyone haven't extended the lock
+          del(key) if getset(key, now + DEFAULT_EXPIRE).to_f <= now
         end
 
         expired_keys.size
       end
 
-      def lock(object, options={}, &block)
-        new(object, options).lock(&block)
+      def lock(object, options = {})
+        raise_assertion_error if block_given?
+        new(object, options).lock
+      end
+
+      def lock!(object, options = {})
+        new(object, options).lock!
+      end
+
+      def with_lock(object, options = {}, &block)
+        new(object, options).with_lock(&block)
+      end
+
+      def raise_assertion_error
+        raise AssertionError, 'block syntax has been removed from #lock, use #with_lock instead'
       end
     end
   end

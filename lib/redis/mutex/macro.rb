@@ -31,17 +31,14 @@ class Redis
 
           define_method(with_method) do |*args|
             key = self.class.name << '#' << target.to_s
-            response = nil
 
-            success = Redis::Mutex.lock(key, options) do
-              response = send(without_method, *args)
+            begin
+              Redis::Mutex.with_lock(key, options) do
+                send(without_method, *args)
+              end
+            rescue Redis::Mutex::LockError
+              send(after_method, *args) if respond_to?(after_method)
             end
-
-            if !success and respond_to?(after_method)
-              response = send(after_method, *args)
-            end
-
-            response
           end
 
           alias_method without_method, target
