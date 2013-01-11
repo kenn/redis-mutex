@@ -53,7 +53,7 @@ class Redis
       return false  # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
-    # Returns true if resource is locked
+    # Returns true if resource is locked. Note that nil.to_f returns 0.0
     def locked?
       get.to_f > Time.now.to_f
     end
