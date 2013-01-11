@@ -53,6 +53,11 @@ class Redis
       return false  # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
+    # Returns true if resource is locked
+    def locked?
+      get.to_f > Time.now.to_f
+    end
+
     def unlock(force = false)
       # Since it's possible that the operations in the critical section took a long time,
       # we can't just simply release the lock. The unlock method checks if @expires_at

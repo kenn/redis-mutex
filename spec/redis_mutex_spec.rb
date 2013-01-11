@@ -103,6 +103,25 @@ describe Redis::Mutex do
     mutex.lock.should be_false
   end
 
+  it 'tells about lock\'s state' do
+    mutex = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex.lock
+
+    mutex.should be_locked
+
+    mutex.unlock
+    mutex.should_not be_locked
+  end
+
+  it 'tells that resource is not locked when lock is expired' do
+    mutex = Redis::Mutex.new(:test_lock, :expire => 0.1)
+    mutex.lock
+
+    sleep 0.2 # lock expired now
+
+    mutex.should_not be_locked
+  end
+
   it 'returns value of block' do
     Redis::Mutex.with_lock(:test_lock) { :test_result }.should == :test_result
   end

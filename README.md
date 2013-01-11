@@ -72,6 +72,7 @@ There are a number of methods:
 mutex = Redis::Mutex.new(key, options)    # Configure a mutex lock
 mutex.lock                                # Try to acquire the lock
 mutex.unlock                              # Try to release the lock
+mutex.locked?                             # Find out if resource already locked
 mutex.lock!                               # Try to acquire the lock, raises exception when failed
 mutex.unlock!                             # Try to release the lock, raises exception when failed
 mutex.with_lock                           # Try to acquire the lock, execute the block, then return the value of the block.
