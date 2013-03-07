@@ -45,12 +45,16 @@ class Redis
     def try_lock
       now = Time.now.to_f
       @expires_at = now + @expire                       # Extend in each blocking loop
-      return true   if setnx(@expires_at)               # Success, the lock has been acquired
-      return false  if get.to_f > now                   # Check if the lock is still effective
+
+      loop do
+        return true if setnx(@expires_at)               # Success, the lock has been acquired
+      end until old_value = get
+
+      return false if old_value.to_f > now              # Check if the lock is still effective
 
       # The lock has expired but wasn't released... BAD!
-      return true   if getset(@expires_at).to_f <= now   # Success, we acquired the previously expired lock
-      return false  # Dammit, it seems that someone else was even faster than us to remove the expired lock!
+      return true if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
+      return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
     # Returns true if resource is locked. Note that nil.to_f returns 0.0
