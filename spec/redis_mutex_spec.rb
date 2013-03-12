@@ -178,7 +178,7 @@ describe Redis::Mutex do
     def run(id)
       print "invoked worker #{id}...\n"
       Redis::Classy.db.client.reconnect
-      mutex = Redis::Mutex.new(:test_lock, expire: 1, block: 10, sleep: 0.01)
+      mutex = Redis::Mutex.new(:test_lock, :expire => 1, :block => 10, :sleep => 0.01)
       result = 0
       LOOP_NUM.times do |i|
         mutex.with_lock do
@@ -191,22 +191,26 @@ describe Redis::Mutex do
     end
 
     it 'runs without hiccups' do
-      STDOUT.sync = true
-      puts "\nrunning stress tests..."
-      if pid1 = fork
-        # Parent
-        if pid2 = fork
+      begin
+        STDOUT.sync = true
+        puts "\nrunning stress tests..."
+        if pid1 = fork
           # Parent
-          Process.waitall
+          if pid2 = fork
+            # Parent
+            Process.waitall
+          else
+            # Child 2
+            run(2)
+          end
         else
-          # Child 2
-          run(2)
+          # Child 1
+          run(1)
         end
-      else
-        # Child 1
-        run(1)
+        STDOUT.flush
+      rescue NotImplementedError
+        puts $!
       end
-      STDOUT.flush
     end
   end
 end
