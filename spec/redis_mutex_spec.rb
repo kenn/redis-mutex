@@ -1,7 +1,5 @@
 require 'spec_helper'
 
-SHORT_MUTEX_OPTIONS = { :block => 0.1, :sleep => 0.02 }
-
 class C
   include Redis::Mutex::Macro
   auto_mutex :run_singularly, :block => 0, :after_failure => lambda {|id| return "failure: #{id}" }
@@ -13,34 +11,37 @@ class C
 end
 
 describe Redis::Mutex do
+  let(:redis) { RSpec.configuration.redis_connection }
+  let(:mutex_options) { { :block => 0.1, :sleep => 0.02, :redis => redis } }
+
   before do
-    Redis::Classy.flushdb
+    Redis::Mutex.default_redis.flushdb
   end
 
   after :all do
-    Redis::Classy.flushdb
-    Redis::Classy.quit
+    Redis::Mutex.default_redis.flushdb
+    Redis::Mutex.default_redis.quit
   end
 
   it 'locks the universe' do
-    mutex1 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex1 = Redis::Mutex.new(:test_lock, mutex_options)
     mutex1.lock.should be_true
 
-    mutex2 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex2 = Redis::Mutex.new(:test_lock, mutex_options)
     mutex2.lock.should be_false
   end
 
   it 'fails to lock when the lock is taken' do
-    mutex1 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex1 = Redis::Mutex.new(:test_lock, mutex_options)
 
-    mutex2 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex2 = Redis::Mutex.new(:test_lock, mutex_options)
     mutex2.lock.should be_true    # mutex2 beats us to it
 
     mutex1.lock.should be_false   # fail
   end
 
   it 'unlocks only once' do
-    mutex = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex = Redis::Mutex.new(:test_lock, mutex_options)
     mutex.lock.should be_true
 
     mutex.unlock.should be_true   # successfully released the lock
@@ -48,10 +49,10 @@ describe Redis::Mutex do
   end
 
   it 'prevents accidental unlock from outside' do
-    mutex1 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex1 = Redis::Mutex.new(:test_lock, mutex_options)
     mutex1.lock.should be_true
 
-    mutex2 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex2 = Redis::Mutex.new(:test_lock, mutex_options)
     mutex2.unlock.should be_false
   end
 
@@ -60,14 +61,15 @@ describe Redis::Mutex do
     expires_in = 10
     mutex = Redis::Mutex.new(:test_lock, :expire => expires_in)
     mutex.with_lock do
-      mutex.get.to_f.should be_within(1.0).of((start + expires_in).to_f)
+      # TODO refactor
+      mutex.redis.get(mutex.key).to_f.should be_within(1.0).of((start + expires_in).to_f)
     end
-    mutex.get.should be_nil   # key should have been cleaned up
+    mutex.redis.get(mutex.key).should be_nil   # key should have been cleaned up
   end
 
   it 'overwrites a lock when existing lock is expired' do
     # stale lock from the far past
-    Redis::Mutex.set(:test_lock, Time.now - 60)
+    Redis::Mutex.default_redis.set(:test_lock, Time.now - 60)
 
     mutex = Redis::Mutex.new(:test_lock)
     mutex.lock.should be_true
@@ -83,7 +85,7 @@ describe Redis::Mutex do
     mutex2.lock.should be_true
 
     mutex.unlock
-    mutex.get.should_not be_nil   # lock should still be there
+    mutex.redis.get(mutex.key).should_not be_nil   # lock should still be there
   end
 
   it 'ensures unlocking when something goes wrong in the block' do
@@ -93,18 +95,18 @@ describe Redis::Mutex do
         raise "Something went wrong!"
       end
     rescue RuntimeError
-      mutex.get.should be_nil
+      mutex.redis.get(mutex.key).should be_nil
     end
   end
 
   it 'resets locking state on reuse' do
-    mutex = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex = Redis::Mutex.new(:test_lock, mutex_options)
     mutex.lock.should be_true
     mutex.lock.should be_false
   end
 
   it 'tells about lock\'s state' do
-    mutex = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
+    mutex = Redis::Mutex.new(:test_lock, mutex_options)
     mutex.lock
 
     mutex.should be_locked
@@ -131,8 +133,8 @@ describe Redis::Mutex do
   end
 
   it 'raises LockError if lock not obtained' do
-    expect { Redis::Mutex.lock!(:test_lock, SHORT_MUTEX_OPTIONS) }.to_not raise_error
-    expect { Redis::Mutex.lock!(:test_lock, SHORT_MUTEX_OPTIONS) }.to raise_error(Redis::Mutex::LockError)
+    expect { Redis::Mutex.lock!(:test_lock, mutex_options) }.to_not raise_error
+    expect { Redis::Mutex.lock!(:test_lock, mutex_options) }.to raise_error(Redis::Mutex::LockError)
   end
 
   it 'raises UnlockError if lock not obtained' do
@@ -152,12 +154,12 @@ describe Redis::Mutex do
   end
 
   it 'sweeps expired locks' do
-    Redis::Mutex.set(:past, Time.now.to_f - 60)
-    Redis::Mutex.set(:present, Time.now.to_f)
-    Redis::Mutex.set(:future, Time.now.to_f + 60)
-    Redis::Mutex.keys.size.should == 3
-    Redis::Mutex.sweep.should == 2
-    Redis::Mutex.keys.size.should == 1
+    Redis::Mutex.default_redis.set(:past, Time.now.to_f - 60)
+    Redis::Mutex.default_redis.set(:present, Time.now.to_f)
+    Redis::Mutex.default_redis.set(:future, Time.now.to_f + 60)
+    Redis::Mutex.default_redis.keys.size.should eq(3)
+    Redis::Mutex.sweep.should eq(2)
+    Redis::Mutex.default_redis.keys.size.should eq(1)
   end
 
   describe Redis::Mutex::Macro do
@@ -177,7 +179,7 @@ describe Redis::Mutex do
 
     def run(id)
       print "invoked worker #{id}...\n"
-      Redis::Classy.db.client.reconnect
+      Redis::Mutex.default_redis.client.reconnect
       mutex = Redis::Mutex.new(:test_lock, :expire => 1, :block => 10, :sleep => 0.01)
       result = 0
       LOOP_NUM.times do |i|
@@ -190,7 +192,7 @@ describe Redis::Mutex do
       exit!(result == LOOP_NUM)
     end
 
-    it 'runs without hiccups' do
+    it 'runs without hiccups' do # TODO uncomment
       begin
         STDOUT.sync = true
         puts "\nrunning stress tests..."

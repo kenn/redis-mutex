@@ -1,4 +1,4 @@
-require 'redis-classy'
+require 'redis-namespace'
 
 class Redis
   autoload :Mutex, 'redis/mutex'

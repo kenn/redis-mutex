@@ -12,9 +12,9 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.name          = "redis-mutex"
   gem.require_paths = ["lib"]
-  gem.version       = '2.1.1' # retrieve this value by: Gem.loaded_specs['redis-mutex'].version.to_s
+  gem.version       = '3.0.0' # retrieve this value by: Gem.loaded_specs['redis-mutex'].version.to_s
 
-  gem.add_runtime_dependency "redis-classy", "~> 1.2"
+  gem.add_runtime_dependency "redis-namespace", "~> 1.0"
   gem.add_development_dependency "rspec"
   gem.add_development_dependency "bundler"
 

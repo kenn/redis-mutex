@@ -8,9 +8,12 @@ class Redis
   #            It is recommended that you do NOT go below 0.01. (default: 0.1)
   # :expire => Specify in seconds when the lock should forcibly be removed when something went wrong
   #            with the one who held the lock. (default: 10)
+  # :redis  => A redis connection that will be used by this mutex. if no redis connection is provided,
+  #            this mutex will try to use the redis connection saved in Redis::Mutex.default_redis
   #
-  class Mutex < Redis::Classy
+  class Mutex
     autoload :Macro, 'redis/mutex/macro'
+    attr_reader :redis, :key
 
     DEFAULT_EXPIRE = 10
     LockError = Class.new(StandardError)
@@ -18,10 +21,12 @@ class Redis
     AssertionError = Class.new(StandardError)
 
     def initialize(object, options={})
-      super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
+      @key = object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}"
       @block = options[:block] || 1
       @sleep = options[:sleep] || 0.1
       @expire = options[:expire] || DEFAULT_EXPIRE
+
+      @redis = options[:redis] ? self.class.build_redis_namespace(options[:redis]) : self.class.default_redis
     end
 
     def lock
@@ -44,22 +49,22 @@ class Redis
 
     def try_lock
       now = Time.now.to_f
-      @expires_at = now + @expire                       # Extend in each blocking loop
+      @expires_at = now + @expire
 
       loop do
-        return true if setnx(@expires_at)               # Success, the lock has been acquired
-      end until old_value = get                         # Repeat if unlocked before get
+        return true if redis.setnx(key, @expires_at)               # Success, the lock has been acquired
+      end until old_value = redis.get(key)                         # Repeat if unlocked before get
 
       return false if old_value.to_f > now              # Check if the lock is still effective
 
       # The lock has expired but wasn't released... BAD!
-      return true if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
+      return true if redis.getset(key, @expires_at).to_f <= now    # Success, we acquired the previously expired lock
       return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
     # Returns true if resource is locked. Note that nil.to_f returns 0.0
     def locked?
-      get.to_f > Time.now.to_f
+      redis.get(key).to_f > Time.now.to_f
     end
 
     def unlock(force = false)
@@ -67,9 +72,9 @@ class Redis
       # we can't just simply release the lock. The unlock method checks if @expires_at
       # remains the same, and do not release when the lock timestamp was overwritten.
 
-      if get == @expires_at.to_s or force
+      if redis.get(key) == @expires_at.to_s or force
         # Redis#del with a single key returns '1' or nil
-        !!del
+        !!redis.del(key)
       else
         false
       end
@@ -95,11 +100,23 @@ class Redis
     end
 
     class << self
-      def sweep
-        return 0 if (all_keys = keys).empty?
+      def default_redis=(redis)
+        @_redis = build_redis_namespace(redis)
+      end
+
+      def default_redis
+        @_redis
+      end
+
+      def build_redis_namespace(redis)
+        Redis::Namespace.new(self.name, :redis => redis)
+      end
+
+      def sweep(redis = default_redis)
+        return 0 if (all_keys = redis.keys).empty?
 
         now = Time.now.to_f
-        values = mget(*all_keys)
+        values = redis.mget(*all_keys)
 
         expired_keys = all_keys.zip(values).select do |key, time|
           time && time.to_f <= now
@@ -107,7 +124,7 @@ class Redis
 
         expired_keys.each do |key, _|
           # Make extra sure that anyone haven't extended the lock
-          del(key) if getset(key, now + DEFAULT_EXPIRE).to_f <= now
+          redis.del(key) if redis.getset(key, now + DEFAULT_EXPIRE).to_f <= now
         end
 
         expired_keys.size
