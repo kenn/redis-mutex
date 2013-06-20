@@ -48,7 +48,7 @@ class Redis
 
       loop do
         return true if setnx(@expires_at)               # Success, the lock has been acquired
-      end until old_value = get
+      end until old_value = get                         # Repeat if unlocked before get
 
       return false if old_value.to_f > now              # Check if the lock is still effective
 
