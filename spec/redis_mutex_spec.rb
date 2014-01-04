@@ -22,6 +22,29 @@ describe Redis::Mutex do
     Redis::Classy.quit
   end
 
+  it 'sets the object' do
+    mutex = Redis::Mutex.new(:object)
+    expect(mutex.object).to eq :object
+  end
+
+  describe '#with_lock' do
+    it 'reloads the object if its reloadable' do
+      object = double("active_record_object", reload: true, id: "asdf")
+
+      expect(object).to receive(:reload)
+
+      Redis::Mutex.with_lock(object) {}
+    end
+    it "doesn't reload the object if it isn't reloadable" do
+      object = double("non_reloading_object", id: "asdf")
+      object.stub(:respond_to?).with(:reload).and_return(false)
+
+      expect(object).to_not receive(:reload)
+
+      Redis::Mutex.with_lock(object) {}
+    end
+  end
+
   it 'locks the universe' do
     mutex1 = Redis::Mutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
     mutex1.lock.should be_true

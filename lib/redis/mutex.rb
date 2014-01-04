@@ -17,8 +17,11 @@ class Redis
     UnlockError = Class.new(StandardError)
     AssertionError = Class.new(StandardError)
 
+    attr_reader :object
+
     def initialize(object, options={})
       super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
+      @object = object
       @block = options[:block] || 1
       @sleep = options[:sleep] || 0.1
       @expire = options[:expire] || DEFAULT_EXPIRE
@@ -39,6 +42,7 @@ class Redis
         # Non-blocking mode
         @locking = try_lock
       end
+      object.reload if @locking && object.respond_to?(:reload)
       @locking
     end
 
