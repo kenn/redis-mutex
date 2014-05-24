@@ -61,10 +61,26 @@ gem 'redis-mutex'
 Register the Redis server: (e.g. in `config/initializers/redis_mutex.rb` for Rails)
 
 ```ruby
-Redis::Classy.db = Redis.new(:host => 'localhost')
+Redis::Mutex.default_redis = Redis.new(:host => 'localhost')
 ```
 
-Note that Redis Mutex uses the `redis-classy` gem internally to organize keys in an isolated namespace.
+You can also use a `Redis` object when using the `Redis::Mutex`,
+passing a `:redis` value in the options hash:
+
+
+```Ruby
+Redis::Mutex.with_lock("lock-key", :redis => Redis.new(:host => 'localhost')) do
+    # Do something
+end
+```
+
+Or:
+
+```Ruby
+Redis::Mutex.new("lock-key", :redis => Redis.new(:host => 'localhost')).with_lock do
+    # Do Something
+end
+```
 
 There are a number of methods:
 
