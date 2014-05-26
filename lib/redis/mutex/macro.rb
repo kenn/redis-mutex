@@ -31,7 +31,9 @@ class Redis
 
           define_method(with_method) do |*args|
             key = self.class.name << '#' << target.to_s
-
+            if options.fetch(:with_args, false)
+              key = key << args.inject('') { |args_string, arg| "#{args_string}:#{arg.to_s}" }
+            end
             begin
               Redis::Mutex.with_lock(key, options) do
                 send(without_method, *args)

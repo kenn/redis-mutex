@@ -10,6 +10,12 @@ class C
     sleep 0.1
     return "success: #{id}"
   end
+
+  auto_mutex :run_singularly_with_args, :block => 0, :with_args => true, :after_failure => lambda {|id| return "failure: #{id}" }
+  def run_singularly_with_args(id)
+    sleep 0.1
+    return "success: #{id}"
+  end
 end
 
 describe Redis::Mutex do
@@ -167,6 +173,26 @@ describe Redis::Mutex do
       # not exceeding the sleep inside the method.
       sleep 0.01
       t2 = Thread.new { C.new.run_singularly(2).should == "failure: 2" }
+      t1.join
+      t2.join
+    end
+
+    it 'adds auto_mutex with different args' do
+      t1 = Thread.new { C.new.run_singularly_with_args(1).should == "success: 1" }
+      # In most cases t1 wins, but make sure to give it a head start,
+      # not exceeding the sleep inside the method.
+      sleep 0.01
+      t2 = Thread.new { C.new.run_singularly_with_args(2).should == "success: 2" }
+      t1.join
+      t2.join
+    end
+
+    it 'adds auto_mutex with same args' do
+      t1 = Thread.new { C.new.run_singularly_with_args(1).should == "success: 1" }
+      # In most cases t1 wins, but make sure to give it a head start,
+      # not exceeding the sleep inside the method.
+      sleep 0.01
+      t2 = Thread.new { C.new.run_singularly_with_args(1).should == "failure: 1" }
       t1.join
       t2.join
     end
