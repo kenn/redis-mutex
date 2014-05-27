@@ -224,6 +224,20 @@ describe Redis::Mutex do
       t1.join
       t2.join
     end
+
+    it 'raise exception if there is no such argument' do
+      expect {
+        class C
+          auto_mutex :run_without_such_args, :block => 0, :on => [:missing_arg]
+          def run_without_such_args(id)
+            return "success: #{id}"
+          end
+        end
+      }.to raise_error(ArgumentError) { |error|
+        expect(error.message).to eq 'You are trying to lock on unknown arguments: missing_arg'
+      }
+
+    end
   end
 
   describe 'stress test' do
