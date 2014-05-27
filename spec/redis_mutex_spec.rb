@@ -11,8 +11,14 @@ class C
     return "success: #{id}"
   end
 
-  auto_mutex :run_singularly_with_args, :block => 0, :with_args => true, :after_failure => lambda {|id| return "failure: #{id}" }
-  def run_singularly_with_args(id)
+  auto_mutex :run_singularly_on_args, :block => 0, :on => [:id, :bar], :after_failure => lambda {|id, *others| return "failure: #{id}" }
+  def run_singularly_on_args(id, foo, bar)
+    sleep 0.1
+    return "success: #{id}"
+  end
+
+  auto_mutex :run_singularly_on_keyword_args, :block => 0, :on => [:id, :bar], :after_failure => lambda {|id:, **others| return "failure: #{id}" }
+  def run_singularly_on_keyword_args(id:, foo:, bar:)
     sleep 0.1
     return "success: #{id}"
   end
@@ -167,6 +173,8 @@ describe Redis::Mutex do
   end
 
   describe Redis::Mutex::Macro do
+    let(:object_arg) { Object.new }
+
     it 'adds auto_mutex' do
       t1 = Thread.new { C.new.run_singularly(1).should == "success: 1" }
       # In most cases t1 wins, but make sure to give it a head start,
@@ -177,22 +185,42 @@ describe Redis::Mutex do
       t2.join
     end
 
-    it 'adds auto_mutex with different args' do
-      t1 = Thread.new { C.new.run_singularly_with_args(1).should == "success: 1" }
+    it 'adds auto_mutex on different args' do
+      t1 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" }
       # In most cases t1 wins, but make sure to give it a head start,
       # not exceeding the sleep inside the method.
       sleep 0.01
-      t2 = Thread.new { C.new.run_singularly_with_args(2).should == "success: 2" }
+      t2 = Thread.new { C.new.run_singularly_on_args(2, :'2', object_arg).should == "success: 2" }
       t1.join
       t2.join
     end
 
-    it 'adds auto_mutex with same args' do
-      t1 = Thread.new { C.new.run_singularly_with_args(1).should == "success: 1" }
+    it 'adds auto_mutex on same args' do
+      t1 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" }
       # In most cases t1 wins, but make sure to give it a head start,
       # not exceeding the sleep inside the method.
       sleep 0.01
-      t2 = Thread.new { C.new.run_singularly_with_args(1).should == "failure: 1" }
+      t2 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "failure: 1" }
+      t1.join
+      t2.join
+    end
+
+    it 'adds auto_mutex on different keyword args' do
+      t1 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" }
+      # In most cases t1 wins, but make sure to give it a head start,
+      # not exceeding the sleep inside the method.
+      sleep 0.01
+      t2 = Thread.new { C.new.run_singularly_on_keyword_args(id: 2, foo: :'2', bar: object_arg).should == "success: 2" }
+      t1.join
+      t2.join
+    end
+
+    it 'adds auto_mutex on same keyword args' do
+      t1 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" }
+      # In most cases t1 wins, but make sure to give it a head start,
+      # not exceeding the sleep inside the method.
+      sleep 0.01
+      t2 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "failure: 1" }
       t1.join
       t2.join
     end

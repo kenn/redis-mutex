@@ -28,12 +28,13 @@ class Redis
           if options[:after_failure].is_a?(Proc)
             define_method(after_method, &options[:after_failure])
           end
+          target_argument_names = instance_method(target.to_sym).parameters.map(&:last)
+          mutex_arguments = Array(options[:on]) & target_argument_names
 
           define_method(with_method) do |*args|
-            key = self.class.name << '#' << target.to_s
-            if options.fetch(:with_args, false)
-              key = key << args.inject('') { |args_string, arg| "#{args_string}:#{arg.to_s}" }
-            end
+            named_arguments =  Hash[target_argument_names.zip(args)]
+            arguments  = mutex_arguments.map { |name| named_arguments[name] }
+            key = self.class.name << '#' << target.to_s << ":" << arguments.join(':')
             begin
               Redis::Mutex.with_lock(key, options) do
                 send(without_method, *args)
