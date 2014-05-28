@@ -23,48 +23,47 @@ class C
 end
 
 describe Redis::Mutex::Macro do
-  let(:object_arg) { Object.new }
 
-  it 'adds auto_mutex' do
-    t1 = Thread.new { C.new.run_singularly(1).should == "success: 1" }
+  def race(a, b)
+    t1 = Thread.new(&a)
     # In most cases t1 wins, but make sure to give it a head start,
     # not exceeding the sleep inside the method.
     sleep 0.01
-    t2 = Thread.new { C.new.run_singularly(2).should == "failure: 2" }
+    t2 = Thread.new(&b)
     t1.join
     t2.join
+  end
+
+  let(:object_arg) { Object.new }
+
+  it 'adds auto_mutex' do
+    race(
+      proc { C.new.run_singularly(1).should == "success: 1" },
+      proc { C.new.run_singularly(2).should == "failure: 2" })
   end
 
   it 'adds auto_mutex on different args' do
-    t1 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" }
-    sleep 0.01
-    t2 = Thread.new { C.new.run_singularly_on_args(2, :'2', object_arg).should == "success: 2" }
-    t1.join
-    t2.join
+    race(
+      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" },
+      proc { C.new.run_singularly_on_args(2, :'2', object_arg).should == "success: 2" })
   end
 
   it 'adds auto_mutex on same args' do
-    t1 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" }
-    sleep 0.01
-    t2 = Thread.new { C.new.run_singularly_on_args(1, :'2', object_arg).should == "failure: 1" }
-    t1.join
-    t2.join
+    race(
+      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" },
+      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "failure: 1" })
   end
 
   it 'adds auto_mutex on different keyword args' do
-    t1 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" }
-    sleep 0.01
-    t2 = Thread.new { C.new.run_singularly_on_keyword_args(id: 2, foo: :'2', bar: object_arg).should == "success: 2" }
-    t1.join
-    t2.join
+    race(
+      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" },
+      proc { C.new.run_singularly_on_keyword_args(id: 2, foo: :'2', bar: object_arg).should == "success: 2" })
   end
 
   it 'adds auto_mutex on same keyword args' do
-    t1 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" }
-    sleep 0.01
-    t2 = Thread.new { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "failure: 1" }
-    t1.join
-    t2.join
+    race(
+      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" },
+      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "failure: 1" })
   end
 
   it 'raise exception if there is no such argument' do
