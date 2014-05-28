@@ -15,8 +15,8 @@ class C
     return "success: #{id}"
   end
 
-  auto_mutex :run_singularly_on_keyword_args, :block => 0, :on => [:id, :bar], :after_failure => lambda {|id:, **others| return "failure: #{id}" }
-  def run_singularly_on_keyword_args(id:, foo:, bar:)
+  auto_mutex :run_singularly_on_keyword_args, :block => 0, :on => [:id, :bar], :after_failure => lambda {|id: 1, **others| return "failure: #{id}" }
+  def run_singularly_on_keyword_args(id: 1, foo: 1, bar: 1)
     sleep 0.1
     return "success: #{id}"
   end
