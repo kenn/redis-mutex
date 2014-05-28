@@ -37,8 +37,14 @@ that you can configure any of these timing values, as explained later.
 
 Or if you want to immediately receive `false` on an unsuccessful locking attempt, you can change the mutex mode to **non-blocking**.
 
-Changes in v2.0
----------------
+Changelog
+---------
+
+### v3.0
+
+* Ruby 2.0 or later is required.
+
+### v2.0
 
 * **Exception-based control flow**: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `Redis::Mutex::LockError` and `Redis::Mutex::UnlockError` respectively.
 * **INCOMPATIBLE CHANGE**: `#lock` no longer accepts a block. Use `#with_lock` instead, which uses `lock!` internally and returns the value of block.
