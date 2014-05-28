@@ -43,6 +43,7 @@ Changelog
 ### v3.0
 
 * Ruby 2.0 or later is required.
+* `auto_mutex` now takes `:on` for additional key scoping.
 
 ### v2.0
 
@@ -159,6 +160,20 @@ class JobController < ApplicationController
   def run
     # do something exclusively
     render text: 'success!'
+  end
+end
+```
+
+Also you can specify method arguments with the `on` option. The following creates a mutex key named `ItunesVerifier#perform:123456`, so that the same method can run in parallel as long as the `transaction_id` is different.
+
+```ruby
+class ItunesVerifier
+  include Sidekiq::Worker
+  include Redis::Mutex::Macro
+  auto_mutex :perform, on: [:transaction_id]
+
+  def perform(transaction_id)
+    ...
   end
 end
 ```
