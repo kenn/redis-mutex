@@ -38,32 +38,32 @@ describe Redis::Mutex::Macro do
 
   it 'adds auto_mutex' do
     race(
-      proc { C.new.run_singularly(1).should == "success: 1" },
-      proc { C.new.run_singularly(2).should == "failure: 2" })
+      proc { expect(C.new.run_singularly(1)).to eq("success: 1") },
+      proc { expect(C.new.run_singularly(2)).to eq("failure: 2") })
   end
 
   it 'adds auto_mutex on different args' do
     race(
-      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" },
-      proc { C.new.run_singularly_on_args(2, :'2', object_arg).should == "success: 2" })
+      proc { expect(C.new.run_singularly_on_args(1, :'2', object_arg)).to eq("success: 1") },
+      proc { expect(C.new.run_singularly_on_args(2, :'2', object_arg)).to eq("success: 2") })
   end
 
   it 'adds auto_mutex on same args' do
     race(
-      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "success: 1" },
-      proc { C.new.run_singularly_on_args(1, :'2', object_arg).should == "failure: 1" })
+      proc { expect(C.new.run_singularly_on_args(1, :'2', object_arg)).to eq("success: 1") },
+      proc { expect(C.new.run_singularly_on_args(1, :'2', object_arg)).to eq("failure: 1") })
   end
 
   it 'adds auto_mutex on different keyword args' do
     race(
-      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" },
-      proc { C.new.run_singularly_on_keyword_args(id: 2, foo: :'2', bar: object_arg).should == "success: 2" })
+      proc { expect(C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg)).to eq("success: 1") },
+      proc { expect(C.new.run_singularly_on_keyword_args(id: 2, foo: :'2', bar: object_arg)).to eq("success: 2") })
   end
 
   it 'adds auto_mutex on same keyword args' do
     race(
-      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "success: 1" },
-      proc { C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg).should == "failure: 1" })
+      proc { expect(C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg)).to eq("success: 1") },
+      proc { expect(C.new.run_singularly_on_keyword_args(id: 1, foo: :'2', bar: object_arg)).to eq("failure: 1") })
   end
 
   it 'raise exception if there is no such argument' do
