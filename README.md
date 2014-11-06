@@ -98,7 +98,7 @@ The initialize method takes several options.
 
 ```ruby
 :block  => 1    # Specify in seconds how long you want to wait for the lock to be released.
-                # Speficy 0 if you need non-blocking sematics and return false immediately. (default: 1)
+                # Specify 0 if you need non-blocking sematics and return false immediately. (default: 1)
 :sleep  => 0.1  # Specify in seconds how long the polling interval should be when :block is given.
                 # It is NOT recommended to go below 0.01. (default: 0.1)
 :expire => 10   # Specify in seconds when the lock should be considered stale when something went wrong
