@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 class C
-  include Redis::Mutex::Macro
+  include RedisMutex::Macro
   auto_mutex :run_singularly, :block => 0, :after_failure => lambda {|id| return "failure: #{id}" }
 
   def run_singularly(id)
@@ -22,7 +22,7 @@ class C
   end
 end
 
-describe Redis::Mutex::Macro do
+describe RedisMutex::Macro do
 
   def race(a, b)
     t1 = Thread.new(&a)

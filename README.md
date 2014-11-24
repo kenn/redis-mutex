@@ -13,7 +13,7 @@ Synopsis
 In the following example, only one thread / process / server can enter the locked block at one time.
 
 ```ruby
-Redis::Mutex.with_lock(:your_lock_name) do
+RedisMutex.with_lock(:your_lock_name) do
   # do something exclusively
 end
 ```
@@ -21,7 +21,7 @@ end
 or
 
 ```ruby
-mutex = Redis::Mutex.new(:your_lock_name)
+mutex = RedisMutex.new(:your_lock_name)
 if mutex.lock
   # do something exclusively
   mutex.unlock
@@ -40,6 +40,13 @@ Or if you want to immediately receive `false` on an unsuccessful locking attempt
 Changelog
 ---------
 
+### v4.0
+
+`redis-mutex` 4.0 has brought a few backward incompatible changes to follow the major upgrade of the underlying `redis-classy` gem.
+
+* The base class `Redis::Mutex` is now `RedisMutex`.
+* `Redis::Classy.db = Redis.new` is now `RedisClassy.redis = Redis.new`.
+
 ### v3.0
 
 * Ruby 2.0 or later is required.
@@ -47,7 +54,7 @@ Changelog
 
 ### v2.0
 
-* **Exception-based control flow**: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `Redis::Mutex::LockError` and `Redis::Mutex::UnlockError` respectively.
+* **Exception-based control flow**: Added `lock!` and `unlock!`, which raises an exception when fails to acquire a lock. Raises `RedisMutex::LockError` and `RedisMutex::UnlockError` respectively.
 * **INCOMPATIBLE CHANGE**: `#lock` no longer accepts a block. Use `#with_lock` instead, which uses `lock!` internally and returns the value of block.
 * `unlock` returns boolean values for success / failure, for consistency with `lock`.
 
@@ -68,7 +75,7 @@ gem 'redis-mutex'
 Register the Redis server: (e.g. in `config/initializers/redis_mutex.rb` for Rails)
 
 ```ruby
-Redis::Classy.db = Redis.new(:host => 'localhost')
+RedisClassy.redis = Redis.new
 ```
 
 Note that Redis Mutex uses the `redis-classy` gem internally to organize keys in an isolated namespace.
@@ -76,7 +83,7 @@ Note that Redis Mutex uses the `redis-classy` gem internally to organize keys in
 There are a number of methods:
 
 ```ruby
-mutex = Redis::Mutex.new(key, options)    # Configure a mutex lock
+mutex = RedisMutex.new(key, options)    # Configure a mutex lock
 mutex.lock                                # Try to acquire the lock, returns false when failed
 mutex.lock!                               # Try to acquire the lock, raises exception when failed
 mutex.unlock                              # Try to release the lock, returns false when failed
@@ -85,14 +92,14 @@ mutex.locked?                             # Find out if resource already locked
 mutex.with_lock                           # Try to acquire the lock, execute the block, then return the value of the block.
                                           # Raises exception when failed to acquire the lock.
 
-Redis::Mutex.sweep                        # Remove all expired locks
-Redis::Mutex.with_lock(key, options)      # Shortcut to new + with_lock
+RedisMutex.sweep                        # Remove all expired locks
+RedisMutex.with_lock(key, options)      # Shortcut to new + with_lock
 ```
 
 The key argument can be symbol, string, or any Ruby objects that respond to `id` method, where the key is automatically set as
-`TheClass:id`. For any given key, `Redis::Mutex:` prefix will be automatically prepended. For instance, if you pass a `Room`
-object with id of `123`, the actual key in Redis will be `Redis::Mutex:Room:123`. The automatic prefixing and instance binding
-is the feature of `Redis::Classy` - for more internal details, refer to [Redis Classy](https://github.com/kenn/redis-classy).
+`TheClass:id`. For any given key, `RedisMutex:` prefix will be automatically prepended. For instance, if you pass a `Room`
+object with id of `123`, the actual key in Redis will be `RedisMutex:Room:123`. The automatic prefixing and instance binding
+is the feature of `RedisClassy` - for more internal details, refer to [Redis Classy](https://github.com/kenn/redis-classy).
 
 The initialize method takes several options.
 
@@ -115,11 +122,11 @@ class RoomController < ApplicationController
   before_filter { @room = Room.find(params[:id]) }
   
   def enter
-    Redis::Mutex.with_lock(@room) do    # key => "Room:123"
+    RedisMutex.with_lock(@room) do    # key => "Room:123"
       # do something exclusively
     end
     render text: 'success!'
-  rescue Redis::Mutex::LockError
+  rescue RedisMutex::LockError
     render text: 'failed to acquire lock!'
   end
 end
@@ -130,7 +137,7 @@ put the `unlock` method in the `ensure` clause.
 
 ```ruby
 def enter
-  mutex = Redis::Mutex.new('non-blocking', block: 0, expire: 10.minutes)
+  mutex = RedisMutex.new('non-blocking', block: 0, expire: 10.minutes)
   if mutex.lock
     begin
       # do something exclusively
@@ -154,7 +161,7 @@ If you give a proc object to the `after_failure` option, it will get called afte
 
 ```ruby
 class JobController < ApplicationController
-  include Redis::Mutex::Macro
+  include RedisMutex::Macro
   auto_mutex :run, block: 0, after_failure: lambda { render text: 'failed to acquire lock!' }
 
   def run
@@ -169,7 +176,7 @@ Also you can specify method arguments with the `on` option. The following create
 ```ruby
 class ItunesVerifier
   include Sidekiq::Worker
-  include Redis::Mutex::Macro
+  include RedisMutex::Macro
   auto_mutex :perform, on: [:transaction_id]
 
   def perform(transaction_id)
