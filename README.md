@@ -3,7 +3,7 @@ Redis Mutex
 
 [![Build Status](https://secure.travis-ci.org/kenn/redis-mutex.png)](http://travis-ci.org/kenn/redis-mutex)
 
-Distrubuted mutex in Ruby using Redis. Supports both **blocking** and **non-blocking** semantics.
+Distributed mutex in Ruby using Redis. Supports both **blocking** and **non-blocking** semantics.
 
 The idea was taken from [the official SETNX doc](http://redis.io/commands/setnx).
 
