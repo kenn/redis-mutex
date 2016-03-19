@@ -14,6 +14,7 @@ class RedisMutex < RedisClassy
   DEFAULT_EXPIRE = 10
   LockError = Class.new(StandardError)
   UnlockError = Class.new(StandardError)
+  ExpireResetError = Class.new(StandardError)
   AssertionError = Class.new(StandardError)
 
   def initialize(object, options={})
@@ -54,6 +55,15 @@ class RedisMutex < RedisClassy
     # The lock has expired but wasn't released... BAD!
     return true if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
     return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
+  end
+
+  # Extends the expire time just in case process needs more time
+  def reset_expire
+    raise ExpireResetError, "extend_expire should be called only on locked resources" unless locked?
+    # we've the lock so we can safely set the new expire time
+    now = Time.now.to_f
+    @expires_at = now + @expire
+    set(@expires_at)
   end
 
   # Returns true if resource is locked. Note that nil.to_f returns 0.0

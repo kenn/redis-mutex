@@ -87,6 +87,27 @@ describe RedisMutex do
     end
   end
 
+  it 'resets the expire' do
+    mutex = RedisMutex.new(:test_lock, :expire => 0.5, :block => 0)
+    expect(mutex.lock).to be_truthy
+    sleep 0.3
+
+    mutex.reset_expire
+    sleep 0.3 # now it shouldn't be expired if reset works
+
+    # someone tries to overwrite the reset expired lock
+    mutex2 = RedisMutex.new(:test_lock, :expire => 0, :block => 0)
+    expect(mutex2.lock).to be_falsey
+  end
+
+  it 'raises ExpireResetError if reset_expire is called when lock mutex is not locked' do
+    mutex = RedisMutex.new(:test_lock, :expire => 0.1, :block => 0)
+    expect(mutex.lock).to be_truthy
+    sleep 0.2 # wait enough to make the lock expired
+
+    expect { mutex.reset_expire {} }.to raise_error(RedisMutex::ExpireResetError)
+  end
+
   it 'resets locking state on reuse' do
     mutex = RedisMutex.new(:test_lock, SHORT_MUTEX_OPTIONS)
     expect(mutex.lock).to be_truthy
