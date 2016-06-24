@@ -2,6 +2,7 @@ language: ruby
 services:
   - redis-server
 before_install:
+  - gem install bundler
   - gem update bundler
 rvm:
   - 2.1
