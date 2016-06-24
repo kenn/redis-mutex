@@ -9,4 +9,3 @@ rvm:
   - 2.2
   - 2.3.0
   - ruby-head
-  - jruby-head
