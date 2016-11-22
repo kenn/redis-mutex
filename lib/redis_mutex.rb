@@ -1,4 +1,5 @@
 class RedisMutex < RedisClassy
+  require 'thread'
   #
   # Options
   #
@@ -21,24 +22,27 @@ class RedisMutex < RedisClassy
     @block = options[:block] || 1
     @sleep = options[:sleep] || 0.1
     @expire = options[:expire] || DEFAULT_EXPIRE
+    @mutex = Mutex.new
   end
 
   def lock
-    self.class.raise_assertion_error if block_given?
-    @locking = false
-
-    if @block > 0
-      # Blocking mode
-      start_at = Time.now
-      while Time.now - start_at < @block
-        @locking = true and break if try_lock
-        sleep @sleep
+    @mutex.synchronize {
+      self.class.raise_assertion_error if block_given?
+      @locking = false
+  
+      if @block > 0
+        # Blocking mode
+        start_at = Time.now
+        while Time.now - start_at < @block
+          @locking = true and break if try_lock
+          sleep @sleep
+        end
+      else
+        # Non-blocking mode
+        @locking = try_lock
       end
-    else
-      # Non-blocking mode
-      @locking = try_lock
-    end
-    @locking
+      @locking
+    }
   end
 
   def try_lock
@@ -65,13 +69,14 @@ class RedisMutex < RedisClassy
     # Since it's possible that the operations in the critical section took a long time,
     # we can't just simply release the lock. The unlock method checks if @expires_at
     # remains the same, and do not release when the lock timestamp was overwritten.
-
-    if get == @expires_at.to_s or force
-      # Redis#del with a single key returns '1' or nil
-      !!del
-    else
-      false
-    end
+    @mutex.synchronize {
+      if get == @expires_at.to_s or force
+        # Redis#del with a single key returns '1' or nil
+        !!del
+      else
+        false
+      end
+    }
   end
 
   def with_lock
