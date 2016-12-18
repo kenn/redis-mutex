@@ -161,6 +161,7 @@ describe RedisMutex do
       LOOP_NUM.times do |i|
         mutex.with_lock do
           result += 1
+          print "\r #{' '*6*(id-1)} %6d" % i
           sleep rand/100
         end
       end
