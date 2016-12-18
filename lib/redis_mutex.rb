@@ -45,15 +45,23 @@ class RedisMutex < RedisClassy
     now = Time.now.to_f
     @expires_at = now + @expire                       # Extend in each blocking loop
 
-    loop do
-      return true if setnx(@expires_at)               # Success, the lock has been acquired
-    end until old_value = get                         # Repeat if unlocked before get
-
-    return false if old_value.to_f > now              # Check if the lock is still effective
-
-    # The lock has expired but wasn't released... BAD!
-    return true if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
-    return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
+    until setnx(@expires_at) # loop until succeeded, this is the only place where we can be sure locked key belong to us
+      watch do
+        if (old_value = get).nil? # try again it's probably free now
+          unwatch
+          next
+        end
+        if old_value.to_f > now
+          unwatch
+          return false # someone else keeps valid lock, leave now
+        else # get < now - possibly expired
+          # now try to delete expired lock
+          return false unless multi { del } # someone else has messed with this key, leave now
+          # or try again
+        end
+      end
+    end
+    return true
   end
 
   # Returns true if resource is locked. Note that nil.to_f returns 0.0
@@ -66,11 +74,16 @@ class RedisMutex < RedisClassy
     # we can't just simply release the lock. The unlock method checks if @expires_at
     # remains the same, and do not release when the lock timestamp was overwritten.
 
-    if get == @expires_at.to_s or force
-      # Redis#del with a single key returns '1' or nil
-      !!del
-    else
-      false
+    watch do
+      if get == @expires_at.to_s || force
+        multi do
+          # Redis#del with a single key returns '1' or nil
+          !!del
+        end
+      else
+        unwatch
+        false
+      end
     end
   end
 
