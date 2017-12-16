@@ -45,7 +45,7 @@ class RedisMutex < RedisClassy
     now = Time.now.to_f
     @expires_at = now + @expire                       # Extend in each blocking loop
 
-    loop do
+    begin
       return true if setnx(@expires_at)               # Success, the lock has been acquired
     end until old_value = get                         # Repeat if unlocked before get
 
