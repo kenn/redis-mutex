@@ -155,7 +155,6 @@ describe RedisMutex do
 
     def run(id)
       print "invoked worker #{id}...\n"
-      RedisClassy.redis.client.reconnect
       mutex = RedisMutex.new(:test_lock, :expire => 1, :block => 10, :sleep => 0.01)
       result = 0
       LOOP_NUM.times do |i|
