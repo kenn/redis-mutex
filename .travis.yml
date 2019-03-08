@@ -5,8 +5,6 @@ before_install:
   - gem install bundler
   - gem update bundler
 rvm:
-  - 2.1
-  - 2.2
   - 2.3.
   - 2.4.
   - 2.5.
