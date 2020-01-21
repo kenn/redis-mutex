@@ -38,7 +38,12 @@ class RedisMutex
         define_method(with_method) do |*args|
           named_arguments =  Hash[target_argument_names.zip(args)]
           arguments  = mutex_arguments.map { |name| named_arguments.fetch(name) }
-          key = self.class.name << '#' << target.to_s << ":" << arguments.join(':')
+          key = format(
+            "%<class>s#%<target>s:%<arguments>s",
+            class: self.class.name,
+            target: target,
+            arguments: arguments.join(":")
+          )
           begin
             RedisMutex.with_lock(key, options) do
               send(without_method, *args)
