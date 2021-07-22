@@ -5,7 +5,7 @@ Gem::Specification.new do |gem|
   gem.email         = ["kenn.ejima@gmail.com"]
   gem.description   = %q{Distrubuted mutex using Redis}
   gem.summary       = %q{Distrubuted mutex using Redis}
-  gem.homepage      = "http://github.com/kenn/redis-mutex"
+  gem.homepage      = "https://github.com/kenn/redis-mutex"
 
   gem.files         = `git ls-files`.split($\)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
