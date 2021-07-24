@@ -1,7 +1,7 @@
 Redis Mutex
 ===========
 
-[![Build Status](https://secure.travis-ci.org/kenn/redis-mutex.png)](http://travis-ci.org/kenn/redis-mutex)
+[![Build Status](https://travis-ci.com/kenn/redis-mutex.svg?branch=master)](https://travis-ci.com/kenn/redis-mutex)
 
 Distributed mutex in Ruby using Redis. Supports both **blocking** and **non-blocking** semantics.
 
