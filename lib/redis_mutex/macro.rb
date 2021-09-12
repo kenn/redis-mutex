@@ -38,6 +38,11 @@ class RedisMutex
         define_method(with_method) do |*args|
           named_arguments =  Hash[target_argument_names.zip(args)]
           arguments  = mutex_arguments.map { |name| named_arguments.fetch(name) }
+          
+          if self.is_a?(ActiveJob::Base)
+            arguments = arguments.map { |arg| arg.is_a?(ActiveRecord::Base) ? arg[arg.class.primary_key] : arg }
+          end
+          
           key = format(
             "%<class>s#%<target>s:%<arguments>s",
             class: self.class.name,
