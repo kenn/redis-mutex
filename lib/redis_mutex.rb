@@ -1,3 +1,5 @@
+require 'securerandom'
+
 class RedisMutex < RedisClassy
   #
   # Options
@@ -8,8 +10,25 @@ class RedisMutex < RedisClassy
   #            It is recommended that you do NOT go below 0.01. (default: 0.1)
   # :expire => Specify in seconds when the lock should forcibly be removed when something went wrong
   #            with the one who held the lock. (default: 10)
+  # :limit  => Specify how many times the provided block can be executed. (default: 1)
+  #            When type is :cumulative or :windowed it means executions over the expire period
+  #            When type is :concurrent it means concurrent executions
+  # :type   => Specify the type of the mutex. (default: :concurrent) [:cumulative, :windowed, :concurrent]
+  #            :concurrent + limit = 1 is the same as the original RedisMutex
+  #            :concurrent is to limit parallel or concurrent executions of the block
+  #            :cumulative is to limit total executions of the block over the past expire seconds
+  #            :windowed is to limit executions of the block in a window that represents expire full seconds
   #
   autoload :Macro, 'redis_mutex/macro'
+  autoload :StandardMutex, 'redis_mutex/standard_mutex'
+  autoload :CumulativeMutex, 'redis_mutex/cumulative_mutex'
+  autoload :ConcurrentMutex, 'redis_mutex/concurrent_mutex'
+  autoload :WindowedMutex, 'redis_mutex/windowed_mutex'
+
+  include StandardMutex
+  include CumulativeMutex
+  include WindowedMutex
+  include ConcurrentMutex
 
   DEFAULT_EXPIRE = 10
   LockError = Class.new(StandardError)
@@ -18,14 +37,28 @@ class RedisMutex < RedisClassy
 
   def initialize(object, options={})
     super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
-    @block = options[:block] || 1
-    @sleep = options[:sleep] || 0.1
-    @expire = options[:expire] || DEFAULT_EXPIRE
+    @block = options[:block]&.to_f || 1
+    @sleep = options[:sleep]&.to_f || 0.1
+    @expire = options[:expire]&.to_i || DEFAULT_EXPIRE
+    @limit = options[:limit]&.to_i || 1
+    @type = options[:type]&.to_sym || :concurrent
+    @unique_key = SecureRandom.uuid.to_s
+    raise ArgumentError, "Unknown type: #{@type}" unless %i[cumulative windowed concurrent].include?(@type)
+  end
+
+  def type
+    case @type
+    when :cumulative then :cumulative
+    when :windowed then :windowed
+    when :concurrent
+      @limit == 1 ? :standard : :concurrent
+    end
   end
 
   def lock
     self.class.raise_assertion_error if block_given?
     @locking = false
+    cleanup_set
 
     if @block > 0
       # Blocking mode
@@ -38,40 +71,22 @@ class RedisMutex < RedisClassy
       # Non-blocking mode
       @locking = try_lock
     end
+
+    cleanup_set
     @locking
   end
 
   def try_lock
-    now = Time.now.to_f
-    @expires_at = now + @expire                       # Extend in each blocking loop
-
-    begin
-      return true if setnx(@expires_at)               # Success, the lock has been acquired
-    end until old_value = get                         # Repeat if unlocked before get
-
-    return false if old_value.to_f > now              # Check if the lock is still effective
-
-    # The lock has expired but wasn't released... BAD!
-    return true if getset(@expires_at).to_f <= now    # Success, we acquired the previously expired lock
-    return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
+    public_send("#{type}_try_lock")
   end
 
   # Returns true if resource is locked. Note that nil.to_f returns 0.0
-  def locked?
-    get.to_f > Time.now.to_f
+  def locked?(now: Time.now.to_i, limit: @limit)
+    public_send("#{type}_locked?", now: now, limit: limit)
   end
 
   def unlock(force = false)
-    # Since it's possible that the operations in the critical section took a long time,
-    # we can't just simply release the lock. The unlock method checks if @expires_at
-    # remains the same, and do not release when the lock timestamp was overwritten.
-
-    if get == @expires_at.to_s or force
-      # Redis#del with a single key returns '1' or nil
-      !!del
-    else
-      false
-    end
+    public_send("#{type}_unlock", force)
   end
 
   def with_lock
@@ -93,23 +108,44 @@ class RedisMutex < RedisClassy
     unlock(force) or raise UnlockError, "failed to release lock #{key.inspect}"
   end
 
+  def cleanup_set(now: Time.now.to_i)
+    public_send("#{type}_cleanup_set", now: now)
+  end
+
+  def key_count(now: Time.now.to_i)
+    public_send("#{type}_key_count", now: now)
+  end
+
   class << self
     def sweep
-      return 0 if (all_keys = keys).empty?
-
+      all_redis_mutex_keys = all_keys
       now = Time.now.to_f
-      values = mget(*all_keys)
+      total = 0
+      total += standard_sweep(now, all_redis_mutex_keys[:standard])
+      total += cumulative_sweep(now, all_redis_mutex_keys[:cumulative])
+      total += windowed_sweep(now, all_redis_mutex_keys[:windowed])
+      total += concurrent_sweep(now, all_redis_mutex_keys[:concurrent])
 
-      expired_keys = all_keys.zip(values).select do |key, time|
-        time && time.to_f <= now
+      total
+    end
+
+    def all_keys
+      return [] if (all_keys = scan_each.to_a).empty?
+
+      all_keys.zip(mget(*all_keys)).each_with_object(Hash.new { |h, k| h[k] = [] }) do |hash, (key, value)|
+        if value.nil?
+          if key.end_with?(':cumulative_set')
+            hash[:cumulative] << key
+          elsif key.end_with?(':windowed_list')
+            hash[:windowed] << key
+          elsif key.end_with?(':concurrent_set')
+            hash[:concurrent] << key
+          end
+        else
+          hash[:standard] << [key, value]
+        end
+        hash
       end
-
-      expired_keys.each do |key, _|
-        # Make extra sure that anyone haven't extended the lock
-        del(key) if getset(key, now + DEFAULT_EXPIRE).to_f <= now
-      end
-
-      expired_keys.size
     end
 
     def lock(object, options = {})
