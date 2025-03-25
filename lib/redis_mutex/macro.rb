@@ -36,7 +36,9 @@ class RedisMutex
         end
 
         define_method(with_method) do |*args, **kwargs|
-          named_arguments =  kwargs.merge(Hash[target_argument_names.zip(args)].compact)
+          named_arguments =  kwargs.merge(
+            Hash[target_argument_names.zip(args)].reject { |_, value| value.nil? }
+          )
           arguments  = mutex_arguments.map { |name| named_arguments.fetch(name) }
           key = format(
             "%<class>s#%<target>s:%<arguments>s",
