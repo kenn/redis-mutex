@@ -37,11 +37,11 @@ class RedisMutex < RedisClassy
 
   def initialize(object, options={})
     super(object.is_a?(String) || object.is_a?(Symbol) ? object : "#{object.class.name}:#{object.id}")
-    @block = options[:block]&.to_f || 1
-    @sleep = options[:sleep]&.to_f || 0.1
-    @expire = options[:expire]&.to_i || DEFAULT_EXPIRE
-    @limit = options[:limit]&.to_i || 1
-    @type = options[:type]&.to_sym || :concurrent
+    @block = (options[:block] || 1).to_f
+    @sleep = (options[:sleep] || 0.1).to_f
+    @expire = (options[:expire] || DEFAULT_EXPIRE).to_i
+    @limit = (options[:limit] || 1).to_i
+    @type = (options[:type] || :concurrent).to_sym
     @unique_key = SecureRandom.uuid.to_s
     raise ArgumentError, "Unknown type: #{@type}" unless %i[cumulative windowed concurrent].include?(@type)
   end

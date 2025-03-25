@@ -38,7 +38,7 @@ class RedisMutex < RedisClassy
       return false # Dammit, it seems that someone else was even faster than us to remove the expired lock!
     end
 
-    def standard_locked?(...)
+    def standard_locked?(*args, **kwargs)
       get.to_f > Time.now.to_f
     end
 
@@ -55,11 +55,11 @@ class RedisMutex < RedisClassy
       end
     end
 
-    def standard_key_count(...)
+    def standard_key_count(*args, **kwargs)
       exists? ? 1 : 0
     end
 
-    def standard_cleanup_set(...)
+    def standard_cleanup_set(*args, **kwargs)
       nil
     end
   end
