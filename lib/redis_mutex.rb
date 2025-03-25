@@ -118,9 +118,9 @@ class RedisMutex < RedisClassy
 
   def delete_key(target_key = nil)
     if Redis::Namespace::VERSION.to_i < 2
-      target_key.present? ? redis.del(redis_key) : del
+      target_key ? redis.del(target_key) : del
     else
-      target_key.present? ? redis.unlink(redis_key) : unlink
+      target_key ? redis.unlink(target_key) : unlink
     end
   end
 
@@ -175,9 +175,9 @@ class RedisMutex < RedisClassy
 
     def delete_key(target_key = nil)
       if Redis::Namespace::VERSION.to_i < 2
-        target_key.present? ? redis.del(redis_key) : del
+        target_key ? redis.del(target_key) : del
       else
-        target_key.present? ? redis.unlink(redis_key) : unlink
+        target_key ? redis.unlink(target_key) : unlink
       end
     end
   end
