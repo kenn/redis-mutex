@@ -5,7 +5,7 @@ class RedisMutex < RedisClassy
     end
 
     module ClassMethods
-      def windowed_sweep(*args, **kwargs)
+      def windowed_sweep(_now, _all_keys)
         # windowed mutexes use expire to automatically remove keys
         0
       end
@@ -27,21 +27,21 @@ class RedisMutex < RedisClassy
       false
     end
 
-    def windowed_locked?(*args, **kwargs)
-      cumulative_locked?(*args, **kwargs)
+    def windowed_locked?(options = {})
+      cumulative_locked?(options)
     end
 
-    def windowed_unlock(*args, **kwargs)
-      cumulative_unlock(*args, **kwargs)
+    def windowed_unlock(force = false)
+      cumulative_unlock(force)
     end
 
-    def windowed_key_count(*args, **kwargs)
+    def windowed_key_count(_ = {})
       redis.llen("#{key}:#{type}_list")
     rescue Redis::BaseError
       0
     end
 
-    def windowed_cleanup_set(*args, **kwargs)
+    def windowed_cleanup_set(_ = {})
       nil
     end
   end

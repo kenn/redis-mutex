@@ -81,8 +81,8 @@ class RedisMutex < RedisClassy
   end
 
   # Returns true if resource is locked. Note that nil.to_f returns 0.0
-  def locked?(now: Time.now.to_i, limit: @limit)
-    public_send("#{type}_locked?", now: now, limit: limit)
+  def locked?(options = {})
+    public_send("#{type}_locked?", options)
   end
 
   def unlock(force = false)
@@ -108,12 +108,12 @@ class RedisMutex < RedisClassy
     unlock(force) or raise UnlockError, "failed to release lock #{key.inspect}"
   end
 
-  def cleanup_set(now: Time.now.to_i)
-    public_send("#{type}_cleanup_set", now: now)
+  def cleanup_set(options = {})
+    public_send("#{type}_cleanup_set", options)
   end
 
-  def key_count(now: Time.now.to_i)
-    public_send("#{type}_key_count", now: now)
+  def key_count(options = {})
+    public_send("#{type}_key_count", options)
   end
 
   class << self

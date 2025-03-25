@@ -31,8 +31,8 @@ class RedisMutex < RedisClassy
       false
     end
 
-    def cumulative_locked?(now: Time.now.to_i, limit: @limit)
-      key_count(now: now) >= limit
+    def cumulative_locked?(options = {})
+      key_count(now: options[:now] || Time.now.to_i) >= options[:limit] || @limit
     end
 
     def cumulative_unlock(force = false)
@@ -43,13 +43,15 @@ class RedisMutex < RedisClassy
       end
     end
 
-    def cumulative_key_count(now: Time.now.to_i)
+    def cumulative_key_count(options = {})
+      now = options[:now] || Time.now.to_i
       redis.zcount("#{key}:#{type}_set", now - @expire, now)
     rescue Redis::BaseError
       0
     end
 
-    def cumulative_cleanup_set(now: Time.now.to_i)
+    def cumulative_cleanup_set(options = {})
+      now = options[:now] || Time.now.to_i
       # Any set members with a score lower than the current time minus the expire time are no longer needed
       # This is to optimize the key_count too O(log(N)) and the cleanup which is O(log(N)+M)
       # So cleanup should be run as often as possible
