@@ -5,8 +5,8 @@ class RedisMutex < RedisClassy
     end
 
     module ClassMethods
-      def cumulative_sweep(...)
-        concurrent_sweep(...)
+      def concurrent_sweep(...)
+        cumulative_sweep(...)
       end
     end
 
@@ -24,11 +24,7 @@ class RedisMutex < RedisClassy
     end
 
     def concurrent_unlock(_)
-      key_was = key
-      self.key = "#{key}:#{type}_set"
-      !!zrem(@unique_key)
-    ensure
-      self.key = key_was
+      !!redis.zrem("#{key}:#{type}_set", @unique_key)
     end
   end
 end

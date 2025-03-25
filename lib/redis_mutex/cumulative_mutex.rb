@@ -22,13 +22,7 @@ class RedisMutex < RedisClassy
         if locked?(now: now)
           false
         else
-          begin
-            key_was = key
-            self.key = "#{key}:#{type}_set"
-            zadd(now, @unique_key)
-          ensure
-            self.key = key_was
-          end
+          redis.zadd("#{key}:#{type}_set", now, @unique_key)
           true
         end
       end
@@ -50,26 +44,16 @@ class RedisMutex < RedisClassy
     end
 
     def cumulative_key_count(now: Time.now.to_i)
-      key_was = key
-      self.key = "#{key}:#{type}_set"
-      zcount(now - @expire, now)
+      redis.zcount("#{key}:#{type}_set", now - @expire, now)
     rescue Redis::BaseError
       0
-    ensure
-      self.key = key_was
     end
 
     def cumulative_cleanup_set(now: Time.now.to_i)
-      key_was = key
-      self.key = "#{key_was}:#{type}_set"
       # Any set members with a score lower than the current time minus the expire time are no longer needed
       # This is to optimize the key_count too O(log(N)) and the cleanup which is O(log(N)+M)
       # So cleanup should be run as often as possible
-      zremrangebyscore('-inf', "(#{now - @expire}")
-    rescue RedisMutex::LockError
-      nil
-    ensure
-      self.key = key_was
+      redis.zremrangebyscore("#{key}:#{type}_set", '-inf', "(#{now - @expire}")
     end
   end
 end

@@ -35,8 +35,8 @@ class RedisMutex
           raise ArgumentError, "You are trying to lock on unknown arguments: #{unknown_arguments.join(', ')}"
         end
 
-        define_method(with_method) do |*args|
-          named_arguments =  Hash[target_argument_names.zip(args)]
+        define_method(with_method) do |*args, **kwargs|
+          named_arguments =  kwargs.merge(Hash[target_argument_names.zip(args)].compact)
           arguments  = mutex_arguments.map { |name| named_arguments.fetch(name) }
           key = format(
             "%<class>s#%<target>s:%<arguments>s",
@@ -46,10 +46,10 @@ class RedisMutex
           )
           begin
             RedisMutex.with_lock(key, options) do
-              send(without_method, *args)
+              send(without_method, *args, **kwargs)
             end
           rescue RedisMutex::LockError
-            send(after_method, *args) if respond_to?(after_method)
+            send(after_method, *args, **kwargs) if respond_to?(after_method)
           end
         end
 

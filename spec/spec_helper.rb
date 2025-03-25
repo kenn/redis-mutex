@@ -5,9 +5,13 @@ require 'rspec'
 require 'redis-mutex'
 
 RSpec.configure do |config|
-  # Use database 15 for testing so we don't accidentally step on you real data.
-  RedisClassy.redis = Redis.new(db: 15)
+  if ENV['ci'] == 'true'
+    RedisClassy.redis = Redis.new
+  else
+    # Use database 15 for testing so we don't accidentally step on you real data.
+    RedisClassy.redis = Redis.new(db: 15)
+  end
   unless RedisClassy.keys.empty?
-    abort '[ERROR]: Redis database 15 not empty! If you are sure, run "rake flushdb" beforehand.'
+    abort '[ERROR]: Redis database is not empty! If you are sure, run "rake flushdb" beforehand.'
   end
 end

@@ -16,14 +16,9 @@ class RedisMutex < RedisClassy
         if locked?
           false
         else
-          begin
-            key_was = key
-            self.key = "#{key}:#{type}_list"
-            lpush(@unique_key)
-            expire(@expire, nx: true) # only set expire if it does not have one
-          ensure
-            self.key = key_was
-          end
+          windowed_key = "#{key}:#{type}_list"
+          redis.lpush(windowed_key, @unique_key)
+          redis.expire(windowed_key, @expire, nx: true) # only set expire if it does not have one
           true
         end
       end
@@ -41,13 +36,9 @@ class RedisMutex < RedisClassy
     end
 
     def windowed_key_count(...)
-      key_was = key
-      self.key = "#{key}:#{type}_list"
-      llen
+      redis.llen("#{key}:#{type}_list")
     rescue Redis::BaseError
       0
-    ensure
-      self.key = key_was
     end
 
     def windowed_cleanup_set(...)

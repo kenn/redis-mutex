@@ -132,7 +132,7 @@ class RedisMutex < RedisClassy
     def all_keys
       return [] if (all_keys = scan_each.to_a).empty?
 
-      all_keys.zip(mget(*all_keys)).each_with_object(Hash.new { |h, k| h[k] = [] }) do |hash, (key, value)|
+      all_keys.zip(mget(*all_keys)).each_with_object(Hash.new { |h, k| h[k] = [] }) do |(key, value), hash|
         if value.nil?
           if key.end_with?(':cumulative_set')
             hash[:cumulative] << key

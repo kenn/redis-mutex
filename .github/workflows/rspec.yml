@@ -1,0 +1,35 @@
+name: RSpec
+
+on:
+  pull_request:
+
+jobs:
+  rspec:
+    name: RSpec
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: [2.1, 2.2, 2.3.0, 2.7.0, 3.0, 3.1, 3.2, 3.3]
+
+    services:
+      redis:
+        image: public.ecr.aws/docker/library/redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Run rspec
+        run: bundle exec rspec
