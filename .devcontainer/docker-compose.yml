@@ -31,7 +31,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: .devcontainer/Dockerfile
+      dockerfile: .devcontainer/Dockerfile.2.1
     image: redis-mutex
     container_name: redis-mutex
     pull_policy: build

@@ -32,7 +32,7 @@ class RedisMutex < RedisClassy
     end
 
     def cumulative_locked?(options = {})
-      key_count(now: options[:now] || Time.now.to_i) >= options[:limit] || @limit
+      key_count(now: options[:now] || Time.now.to_i) >= (options[:limit] || @limit)
     end
 
     def cumulative_unlock(force = false)
