@@ -1,0 +1,58 @@
+version: '3'
+name: redis-mutex
+networks:
+  redis-mutex:
+    name: redis-mutex
+    external: false
+volumes:
+  bundle_cache:
+    name: 'redis-mutex-bundle-cache'
+  vendor_cache:
+    name: 'redis-mutex-vendor-cache'
+  redis_data:
+    name: 'redis-mutex-redis-data'
+  redis_shared_data:
+    name: 'redis-mutex-redis-data'
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+    container_name: redis-mutex-redis
+    volumes:
+      - 'redis_shared_data:/var/shared/redis:delegated'
+      - 'redis_data:/data:delegated'
+    networks:
+      - redis-mutex
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    restart: unless-stopped
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    image: redis-mutex
+    container_name: redis-mutex
+    pull_policy: build
+    volumes:
+      - '..:/app:cached'
+      - vendor_cache:/app/vendor/cache:delegated
+      - bundle_cache:/app/vendor/bundle:delegated
+    networks:
+      - redis-mutex
+    stdin_open: true
+    tty: true
+    environment:
+      BUNDLE_PATH: /app/vendor/bundle
+      REDIS_URL: redis://redis:6379/1
+      CI: true
+    entrypoint: ['/bin/bash', '-l', '-c']
+    command: '"tail -f /dev/null"'
+    depends_on:
+      redis:
+        condition: service_healthy
