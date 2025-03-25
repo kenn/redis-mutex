@@ -5,7 +5,7 @@ on:
 
 env:
   CI: true
-  REDIS_URL: redis://localhost:6379/1
+  REDIS_URL: redis://redis:6379/1
 
 concurrency:
   group: ${{ github.event.repository.name }}-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -23,9 +23,9 @@ jobs:
 
     services:
       redis:
-        # Docker Hub image
-        image: redis
-        # Set health checks to wait until redis has started
+        image: public.ecr.aws/docker/library/redis:7-alpine
+        ports:
+          - "6379:6379"
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
