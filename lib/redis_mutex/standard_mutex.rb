@@ -12,7 +12,7 @@ class RedisMutex < RedisClassy
 
         expired_keys.each do |redis_key, _|
           # Make extra sure that anyone haven't extended the lock
-          unlink(redis_key) if getset(redis_key, now + DEFAULT_EXPIRE).to_f <= now
+          delete_key(redis_key) if getset(redis_key, now + DEFAULT_EXPIRE).to_f <= now
         end
 
         expired_keys.size
@@ -48,8 +48,8 @@ class RedisMutex < RedisClassy
       # remains the same, and do not release when the lock timestamp was overwritten.
 
       if get == @expires_at.to_s or force
-        # Redis#unlink with a single key returns '1' or nil
-        !!unlink
+        # Redis#unlink or Redis#del with a single key returns '1' or nil
+        !!delete_key
       else
         false
       end

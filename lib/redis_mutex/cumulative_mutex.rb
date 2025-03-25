@@ -37,7 +37,7 @@ class RedisMutex < RedisClassy
 
     def cumulative_unlock(force = false)
       if force
-        !!unlink
+        !!delete_key
       else
         false
       end

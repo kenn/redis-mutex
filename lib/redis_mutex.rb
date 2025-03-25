@@ -116,6 +116,14 @@ class RedisMutex < RedisClassy
     public_send("#{type}_key_count", options)
   end
 
+  def delete_key(target_key = nil)
+    if Redis::Namespace::VERSION.to_i < 2
+      target_key.present? ? redis.del(redis_key) : del
+    else
+      target_key.present? ? redis.unlink(redis_key) : unlink
+    end
+  end
+
   class << self
     def sweep
       all_redis_mutex_keys = all_keys
@@ -163,6 +171,14 @@ class RedisMutex < RedisClassy
 
     def raise_assertion_error
       raise AssertionError, 'block syntax has been removed from #lock, use #with_lock instead'
+    end
+
+    def delete_key(target_key = nil)
+      if Redis::Namespace::VERSION.to_i < 2
+        target_key.present? ? redis.del(redis_key) : del
+      else
+        target_key.present? ? redis.unlink(redis_key) : unlink
+      end
     end
   end
 end
