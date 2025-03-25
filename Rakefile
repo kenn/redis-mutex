@@ -10,7 +10,7 @@ task :default => :spec
 desc 'Flush the test database'
 task :flushdb do
   require 'redis'
-  if ENV['ci'] == 'true'
+  if ENV['CI'] == 'true'
     Redis.new.flushdb
   else
     Redis.new(db: 15).flushdb

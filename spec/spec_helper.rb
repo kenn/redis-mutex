@@ -5,7 +5,7 @@ require 'rspec'
 require 'redis-mutex'
 
 RSpec.configure do |config|
-  if ENV['ci'] == 'true'
+  if ENV['CI'] == 'true'
     RedisClassy.redis = Redis.new
   else
     # Use database 15 for testing so we don't accidentally step on you real data.

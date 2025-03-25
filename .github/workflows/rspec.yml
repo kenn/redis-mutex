@@ -3,6 +3,13 @@ name: RSpec
 on:
   pull_request:
 
+env:
+  CI: true
+
+concurrency:
+  group: ${{ github.event.repository.name }}-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   rspec:
     name: RSpec
