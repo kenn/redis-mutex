@@ -5,10 +5,6 @@ networks:
     name: redis-mutex
     external: false
 volumes:
-  bundle_cache:
-    name: 'redis-mutex-bundle-cache'
-  vendor_cache:
-    name: 'redis-mutex-vendor-cache'
   redis_data:
     name: 'redis-mutex-redis-data'
   redis_shared_data:
@@ -41,8 +37,6 @@ services:
     pull_policy: build
     volumes:
       - '..:/app:cached'
-      - vendor_cache:/app/vendor/cache:delegated
-      - bundle_cache:/app/vendor/bundle:delegated
     networks:
       - redis-mutex
     stdin_open: true

@@ -14,4 +14,8 @@ RSpec.configure do |config|
   unless RedisClassy.keys.empty?
     abort '[ERROR]: Redis database is not empty! If you are sure, run "rake flushdb" beforehand.'
   end
+
+  config.before(:each) do
+    Redis.new.flushdb
+  end
 end
