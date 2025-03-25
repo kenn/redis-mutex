@@ -2,8 +2,8 @@ require 'spec_helper'
 
 class C
   include RedisMutex::Macro
-
   auto_mutex :run_singularly, :block => 0, :after_failure => lambda {|id| return "failure: #{id}" }
+
   def run_singularly(id)
     sleep 0.1
     return "success: #{id}"
