@@ -1,5 +1,3 @@
-require 'spec_helper'
-
 SHORT_MUTEX_OPTIONS = { :block => 0.1, :sleep => 0.02 }
 
 describe RedisMutex do
