@@ -1,8 +1,6 @@
 Redis Mutex
 ===========
 
-[![Build Status](https://travis-ci.com/kenn/redis-mutex.svg?branch=master)](https://travis-ci.com/kenn/redis-mutex)
-
 Distributed mutex in Ruby using Redis. Supports both **blocking** and **non-blocking** semantics.
 
 The idea was taken from [the official SETNX doc](http://redis.io/commands/setnx).

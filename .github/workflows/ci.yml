@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Ruby ${{ matrix.ruby-version }}
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+
+    strategy:
+      matrix:
+        ruby-version:
+          - 3.4
+          - 3.3
+          - 3.2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+      - name: Run tests
+        run: bundle exec rake
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
