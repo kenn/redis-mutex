@@ -10,4 +10,6 @@ RSpec.configure do |config|
   unless RedisClassy.keys.empty?
     abort '[ERROR]: Redis database 15 not empty! If you are sure, run "rake flushdb" beforehand.'
   end
+
+  config.example_status_persistence_file_path = "spec/examples.txt"
 end
