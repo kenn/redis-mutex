@@ -1,3 +1,5 @@
+[![CI](https://github.com/kenn/redis-mutex/actions/workflows/ci.yml/badge.svg)](https://github.com/kenn/redis-mutex/actions/workflows/ci.yml)
+
 Redis Mutex
 ===========
 
